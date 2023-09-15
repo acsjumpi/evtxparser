@@ -1,4 +1,10 @@
-package br.com.brainboss.evtx.parser;
+package br.com.brainboss.evtx.handlers;
+
+import br.com.brainboss.evtx.parser.ChunkHeader;
+import br.com.brainboss.evtx.parser.FileHeader;
+import br.com.brainboss.evtx.parser.FileHeaderFactory;
+import br.com.brainboss.evtx.parser.MalformedChunkException;
+import br.com.brainboss.evtx.parser.Record;
 
 import java.io.IOException;
 import java.io.InputStream;

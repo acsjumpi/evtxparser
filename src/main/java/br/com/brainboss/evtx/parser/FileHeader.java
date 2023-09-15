@@ -21,6 +21,7 @@ import com.google.common.primitives.UnsignedLong;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.logging.Logger;
 import java.util.zip.CRC32;
 
 /**
@@ -42,11 +43,11 @@ public class FileHeader extends Block {
     private final UnsignedInteger flags;
     private final UnsignedInteger checksum;
     private final InputStream inputStream;
-    private final ComponentLog log;
+    private final Logger log;
     private long currentOffset;
     private int count = 1;
 
-    public FileHeader(InputStream inputStream, ComponentLog log) throws IOException {
+    public FileHeader(InputStream inputStream, Logger log) throws IOException {
         super(new BinaryReader(inputStream, 4096));
         this.log = log;
         // Bytes will be checksummed

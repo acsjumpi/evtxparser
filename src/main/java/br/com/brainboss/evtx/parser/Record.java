@@ -21,6 +21,7 @@ import com.google.common.primitives.UnsignedLong;
 
 import java.io.IOException;
 import java.util.Date;
+import br.com.brainboss.evtx.parser.bxml.RootNode;
 
 /**
  * Individual event, pretty much a wrapper for the RootNode

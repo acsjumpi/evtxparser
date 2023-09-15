@@ -1,4 +1,5 @@
-package br.com.brainboss.evtx.parser;
+package br.com.brainboss.evtx.handlers;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,9 +18,8 @@ package br.com.brainboss.evtx.parser;
  */
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.logging.Logger;
+import java.io.OutputStream;
 
-public interface FileHeaderFactory {
-    FileHeader create(InputStream inputStream, Logger componentLog) throws IOException;
+public interface RootNodeHandlerFactory {
+    RootNodeHandler create(OutputStream outputStream) throws IOException;
 }

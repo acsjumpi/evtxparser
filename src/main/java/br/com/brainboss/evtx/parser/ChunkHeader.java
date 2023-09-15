@@ -18,6 +18,8 @@ package br.com.brainboss.evtx.parser;
  */
 
 
+import br.com.brainboss.evtx.parser.bxml.NameStringNode;
+import br.com.brainboss.evtx.parser.bxml.TemplateNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.UnsignedInteger;
 import com.google.common.primitives.UnsignedLong;
@@ -53,12 +55,12 @@ public class ChunkHeader extends Block {
     private final Logger log;
     private UnsignedLong recordNumber;
 
-    public ChunkHeader(BinaryReader binaryReader, long headerOffset, int chunkNumber) throws IOException {
+    public ChunkHeader(BinaryReader binaryReader, Logger log, long headerOffset, int chunkNumber) throws IOException {
         super(binaryReader, headerOffset);
         this.chunkNumber = chunkNumber;
         CRC32 crc32 = new CRC32();
         crc32.update(binaryReader.peekBytes(120));
-        log = Logger.getLogger(ChunkHeader.class.getName());
+        this.log = log;
         magicString = binaryReader.readString(8);
         fileFirstRecordNumber = binaryReader.readQWord();
         fileLastRecordNumber = binaryReader.readQWord();
