@@ -17,16 +17,14 @@ package br.com.brainboss.evtx.parser.bxml.value;
  * limitations under the License.
  */
 
-package org.apache.nifi.processors.evtx.parser.bxml.value;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-import org.apache.nifi.processors.evtx.parser.BinaryReader;
-import org.apache.nifi.processors.evtx.parser.ChunkHeader;
-import org.apache.nifi.processors.evtx.parser.bxml.BxmlNode;
+import br.com.brainboss.evtx.parser.BinaryReader;
+import br.com.brainboss.evtx.parser.ChunkHeader;
+import br.com.brainboss.evtx.parser.bxml.BxmlNode;
 
 /**
  * Node representing an array of wstring values

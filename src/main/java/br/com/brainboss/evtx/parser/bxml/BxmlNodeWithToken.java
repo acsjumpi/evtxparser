@@ -17,10 +17,8 @@ package br.com.brainboss.evtx.parser.bxml;
  * limitations under the License.
  */
 
-package org.apache.nifi.processors.evtx.parser.bxml;
-
-import org.apache.nifi.processors.evtx.parser.BinaryReader;
-import org.apache.nifi.processors.evtx.parser.ChunkHeader;
+import br.com.brainboss.evtx.parser.BinaryReader;
+import br.com.brainboss.evtx.parser.ChunkHeader;
 
 import java.io.IOException;
 

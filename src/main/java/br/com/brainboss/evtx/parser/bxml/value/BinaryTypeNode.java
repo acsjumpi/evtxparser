@@ -17,12 +17,11 @@ package br.com.brainboss.evtx.parser.bxml.value;
  * limitations under the License.
  */
 
-package org.apache.nifi.processors.evtx.parser.bxml.value;
 
-import org.apache.nifi.processors.evtx.parser.BinaryReader;
-import org.apache.nifi.processors.evtx.parser.ChunkHeader;
-import org.apache.nifi.processors.evtx.parser.NumberUtil;
-import org.apache.nifi.processors.evtx.parser.bxml.BxmlNode;
+import br.com.brainboss.evtx.parser.BinaryReader;
+import br.com.brainboss.evtx.parser.ChunkHeader;
+import br.com.brainboss.evtx.parser.NumberUtil;
+import br.com.brainboss.evtx.parser.bxml.BxmlNode;
 
 import java.io.IOException;
 
