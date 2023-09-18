@@ -7,16 +7,19 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 import java.util.Map;
+import org.apache.log4j.Logger;
 
 public class EVTX implements TableProvider {
+    private static final Logger log = Logger.getLogger(EVTX.class);
     public EVTX() {
-
     }
     public StructType inferSchema(CaseInsensitiveStringMap options) {
+        log.debug("InferSchema pass");
         return null;
     }
 
     public Table getTable(StructType schema, Transform[] partitioning, Map<String, String> properties) {
+        log.debug("getTable pass");
         return new EVTXTable(schema,properties);
     }
 

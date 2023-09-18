@@ -6,11 +6,13 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 import java.util.Map;
+import org.apache.log4j.Logger;
 
 public class EVTXScan implements Scan {
     private final StructType schema;
     private final Map<String, String> properties;
     private final CaseInsensitiveStringMap options;
+    private static final Logger log = Logger.getLogger(EVTXScan.class);
 
     public EVTXScan(StructType schema,
                    Map<String, String> properties,
@@ -33,6 +35,7 @@ public class EVTXScan implements Scan {
 
     @Override
     public Batch toBatch() {
+        log.debug("toBatch joined");
         return new EVTXBatch(schema,properties,options);
     }
 }

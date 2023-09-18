@@ -18,7 +18,7 @@ package br.com.brainboss.evtx.parser;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.logging.Logger;
+import org.apache.log4j.Logger;
 
 public interface FileHeaderFactory {
     FileHeader create(InputStream inputStream, Logger componentLog) throws IOException;

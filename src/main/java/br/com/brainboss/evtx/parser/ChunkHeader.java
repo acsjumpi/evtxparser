@@ -30,7 +30,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.zip.CRC32;
-import java.util.logging.Logger;
+import org.apache.log4j.Logger;
 
 /**
  * A Chunk is a self-contained group of templates, strings, and nodes
@@ -104,14 +104,14 @@ public class ChunkHeader extends Block {
             while (offset > 0) {
                 int token = new BinaryReader(binaryReader, offset - 10).read();
                 if (token != 0x0c) {
-                    log.log(Level.WARNING, "Unexpected token when parsing template at offset " + offset);
+                    log.debug("Unexpected token when parsing template at offset " + offset);
                     break;
                 }
                 BinaryReader templateReader = new BinaryReader(binaryReader, offset - 4);
                 int pointer = NumberUtil.intValueMax(templateReader.readDWord(), Integer.MAX_VALUE, "Invalid pointer.");
 
                 if (offset != pointer) {
-                    log.log(Level.WARNING, "Invalid pointer when parsing template at offset " + offset);
+                    log.debug("Invalid pointer when parsing template at offset " + offset);
                     break;
                 }
                 TemplateNode templateNode = new TemplateNode(templateReader, this);

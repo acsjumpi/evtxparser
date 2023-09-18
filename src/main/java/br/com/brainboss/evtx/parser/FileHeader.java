@@ -21,7 +21,7 @@ import com.google.common.primitives.UnsignedLong;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.logging.Logger;
+import org.apache.log4j.Logger;
 import java.util.zip.CRC32;
 
 /**
