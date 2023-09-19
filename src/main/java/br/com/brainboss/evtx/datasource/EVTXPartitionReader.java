@@ -8,6 +8,8 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import br.com.brainboss.evtx.parser.MalformedChunkException;
 import br.com.brainboss.evtx.parser.Record;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.xml.StaxDriver;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.types.StructType;
@@ -15,30 +17,27 @@ import scala.collection.JavaConverters;
 
 import java.io.*;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 
 import org.apache.log4j.Logger;
 
 public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
-    private final EVTXInputPartition csvInputPartition;
     private final String fileName;
-    private Iterator<String[]> iterator;
-    private List<Function> valueConverters;
     private final FileHeaderFactory fileheaderfactory;
     private static final Logger log = Logger.getLogger(EVTXPartitionReader.class);
     private FileHeader fileheader;
     private ChunkHeader chunkheader;
     private final RootNodeHandlerFactory rootNodeHandlerFactory;
+    private final EVTXInputPartition evtxInputPartition;
+    private List<Function> valueConverters;
 
     public EVTXPartitionReader(
-            EVTXInputPartition csvInputPartition,
+            EVTXInputPartition evtxInputPartition,
             StructType schema,
             String fileName) throws IOException, URISyntaxException, MalformedChunkException {
-        this.csvInputPartition = csvInputPartition;
+        this.evtxInputPartition = evtxInputPartition;
         this.fileName = fileName;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
@@ -72,18 +71,26 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     @Override
     public InternalRow get() {
         log.debug("EVTXPartitionReader::get joined");
+        List<Object> xmlValues = new ArrayList<>();
+
         try {
             while (fileheader.hasNext()) {
                 chunkheader = fileheader.next();
                 while (chunkheader.hasNext()) {
-                    //ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     //BufferedOutputStream out = new BufferedOutputStream(baos);
-                    XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(new ByteArrayOutputStream());
+                    XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(baos);
                     Record record = chunkheader.next();
                     rootNodeHandler.handle(record.getRootNode());
-                    //String outString = baos.toString();
-                    ByteArrayOutputStream baos = rootNodeHandler.getBaos();
-                    log.debug(baos.size());
+                    rootNodeHandler.close();
+                    log.debug(baos.toString());
+
+                    XStream xs = new XStream(new StaxDriver());
+                    xs.registerConverter(new MapEntryConverter());
+                    xs.alias("Events", Map.class);
+                    Object xmlValue = xs.fromXML(baos.toString());
+                    log.debug(xmlValue);
+                    xmlValues.add(xmlValue);
                 }
             }
         } catch (MalformedChunkException | IOException e) {
@@ -91,18 +98,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             throw new RuntimeException(e);
         }
 
-
-    // Object[] values = iterator.next();
-    // Object[] convertedValues = new Object[values.length];
-    // for (int i = 0; i < values.length; i++) {
-    //     convertedValues[i] = valueConverters.get(i).apply(values[i]);
-    // }
-    // return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(convertedValues).iterator()).asScala().toSeq());
-        Object[] values = new Object[3];
-        values[0] = null;
-        values[1] = null;
-        values[2] = null;
-        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(values).iterator()).asScala().toSeq());
+        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(xmlValues.iterator()).asScala().toSeq());
     }
 
     @Override

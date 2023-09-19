@@ -72,6 +72,11 @@ public class XmlRootNodeHandler implements RootNodeHandler {
         }
     }
     public ByteArrayOutputStream getBaos() {
+        try {
+            close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         return baos;
     }
     @Override
