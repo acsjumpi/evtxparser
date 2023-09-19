@@ -15,12 +15,11 @@ import scala.collection.JavaConverters;
 
 import java.io.*;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
-import java.util.logging.Level;
+
 import org.apache.log4j.Logger;
 
 public class EVTXPartitionReader implements PartitionReader<InternalRow> {
@@ -77,12 +76,14 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             while (fileheader.hasNext()) {
                 chunkheader = fileheader.next();
                 while (chunkheader.hasNext()) {
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    RootNodeHandler rootNodeHandler = rootNodeHandlerFactory.create(out);
+                    //ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    //BufferedOutputStream out = new BufferedOutputStream(baos);
+                    XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(new ByteArrayOutputStream());
                     Record record = chunkheader.next();
                     rootNodeHandler.handle(record.getRootNode());
-                    log.debug(out.toString());
-                    out.close();
+                    //String outString = baos.toString();
+                    ByteArrayOutputStream baos = rootNodeHandler.getBaos();
+                    log.debug(baos.size());
                 }
             }
         } catch (MalformedChunkException | IOException e) {
@@ -97,7 +98,11 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     //     convertedValues[i] = valueConverters.get(i).apply(values[i]);
     // }
     // return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(convertedValues).iterator()).asScala().toSeq());
-        return InternalRow.empty();
+        Object[] values = new Object[3];
+        values[0] = null;
+        values[1] = null;
+        values[2] = null;
+        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(values).iterator()).asScala().toSeq());
     }
 
     @Override

@@ -18,12 +18,14 @@ package br.com.brainboss.evtx.handlers;
  */
 
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 import br.com.brainboss.evtx.parser.bxml.RootNode;
+import org.apache.log4j.Logger;
 
 public class XmlRootNodeHandler implements RootNodeHandler {
     public static final String EVENTS = "Events";
@@ -31,14 +33,20 @@ public class XmlRootNodeHandler implements RootNodeHandler {
 
     private final XMLStreamWriter xmlStreamWriter;
     private final XmlBxmlNodeVisitorFactory xmlBxmlNodeVisitorFactory;
+    private static final Logger log = Logger.getLogger(XmlRootNodeHandler.class);
+    private final ByteArrayOutputStream baos;
 
     public XmlRootNodeHandler(OutputStream outputStream) throws IOException {
-        this(getXmlStreamWriter(new BufferedOutputStream(outputStream)), XmlBxmlNodeVisitor::new);
+        //this(getXmlStreamWriter(new BufferedOutputStream(outputStream)), XmlBxmlNodeVisitor::new);
+        //this(getXmlStreamWriter(outputStream), XmlBxmlNodeVisitor::new);
+        this.baos = (ByteArrayOutputStream) outputStream;
+        this.xmlStreamWriter = getXmlStreamWriter(new BufferedOutputStream(baos));
+        this.xmlBxmlNodeVisitorFactory = XmlBxmlNodeVisitor::new;
+        start();
+        log.debug("XmlRootNodeHandler Constructor joined");
     }
 
-    public XmlRootNodeHandler(XMLStreamWriter xmlStreamWriter, XmlBxmlNodeVisitorFactory xmlBxmlNodeVisitorFactory) throws IOException {
-        this.xmlStreamWriter = xmlStreamWriter;
-        this.xmlBxmlNodeVisitorFactory = xmlBxmlNodeVisitorFactory;
+    public void start () throws IOException {
         try {
             this.xmlStreamWriter.writeStartDocument();
             try {
@@ -53,13 +61,19 @@ public class XmlRootNodeHandler implements RootNodeHandler {
     }
 
     private static XMLStreamWriter getXmlStreamWriter(OutputStream outputStream) throws IOException {
+        log.debug("getXmlStreamWriter joined");
         try {
-            return XML_OUTPUT_FACTORY.createXMLStreamWriter(outputStream, "UTF-8");
+            XMLStreamWriter xmlOutput = XML_OUTPUT_FACTORY.createXMLStreamWriter(outputStream, "UTF-8");
+            log.debug("outputStream"+outputStream.toString());
+            return xmlOutput;
+            //return XML_OUTPUT_FACTORY.createXMLStreamWriter(outputStream, "UTF-8");
         } catch (XMLStreamException e) {
             throw new IOException(e);
         }
     }
-
+    public ByteArrayOutputStream getBaos() {
+        return baos;
+    }
     @Override
     public void handle(RootNode rootNode) throws IOException {
         xmlBxmlNodeVisitorFactory.create(xmlStreamWriter, rootNode);
@@ -67,6 +81,7 @@ public class XmlRootNodeHandler implements RootNodeHandler {
 
     @Override
     public void close() throws IOException {
+        log.debug("XmlRootNodeHandler::close joined");
         try {
             xmlStreamWriter.writeEndElement();
         } catch (XMLStreamException e) {
