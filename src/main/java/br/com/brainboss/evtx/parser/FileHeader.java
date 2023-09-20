@@ -47,7 +47,7 @@ public class FileHeader extends Block {
     private long currentOffset;
     private int count = 1;
 
-    public FileHeader(InputStream inputStream, Logger log) throws IOException {
+    public FileHeader(InputStream inputStream, Logger log, Boolean init) throws IOException {
         super(new BinaryReader(inputStream, 4096));
         this.log = log;
         // Bytes will be checksummed
@@ -82,8 +82,10 @@ public class FileHeader extends Block {
         this.inputStream = inputStream;
         currentOffset = 4096;
 
-        init();
+        if(init)
+            init();
     }
+
 
     @Override
     protected int getHeaderLength() {
