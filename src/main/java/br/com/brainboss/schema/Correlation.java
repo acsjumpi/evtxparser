@@ -4,7 +4,7 @@ import javax.xml.bind.annotation.XmlAttribute;
 
 public class Correlation {
     @XmlAttribute
-    public Object ActivityID;
+    public String ActivityID;
     @XmlAttribute
-    public Object RelatedActivityID;
+    public String RelatedActivityID;
 }

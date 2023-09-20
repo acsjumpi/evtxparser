@@ -7,5 +7,5 @@ public class EventData {
     @XmlElement
     public String Data;
     @XmlElement
-    public Object Binary;
+    public String Binary;
 }
