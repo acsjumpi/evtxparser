@@ -1,6 +1,5 @@
 package br.com.brainboss.evtx.datasource;
 
-import br.com.brainboss.evtx.handlers.RootNodeHandler;
 import br.com.brainboss.evtx.handlers.RootNodeHandlerFactory;
 import br.com.brainboss.evtx.handlers.XmlRootNodeHandler;
 import br.com.brainboss.evtx.parser.ChunkHeader;
@@ -10,6 +9,8 @@ import br.com.brainboss.evtx.parser.MalformedChunkException;
 import br.com.brainboss.evtx.parser.Record;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.PartitionReader;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -37,12 +38,15 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     private final EVTXInputPartition evtxInputPartition;
     private List<Function> valueConverters;
 
+    private StructType schema;
+
     public EVTXPartitionReader(
             EVTXInputPartition evtxInputPartition,
             StructType schema,
             String fileName) throws IOException, URISyntaxException, MalformedChunkException {
         this.evtxInputPartition = evtxInputPartition;
         this.fileName = fileName;
+        this.schema = schema;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
         this.rootNodeHandlerFactory = XmlRootNodeHandler::new;
@@ -88,7 +92,8 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     @Override
     public InternalRow get() {
         log.debug("EVTXPartitionReader::get joined");
-        Map<String, Object>xmlValue;
+        HashMap<String, Object> xmlMap;
+        Object[] xmlObject;
 
         try {
             //while (fileheader.hasNext()) {
@@ -105,9 +110,18 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                     //XStream xs = new XStream(new StaxDriver());
                     //xs.registerConverter(new MapEntryConverter());
                     //xs.alias("Events", Map.class);
-                    xmlValue = (Map<String, Object>) convertNodesFromXml(baos.toString());
-                    log.debug(xmlValue);
-                //}
+                    xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
+                    log.debug(xmlMap);
+
+//                    this.iterateOverStruct(data, this.schema, this.valueConverters);
+
+                    xmlObject = this.toObjectArray(xmlMap, this.schema, this.valueConverters);
+
+//                    Encoder<Events> eventsEncoder = Encoders.bean(Events.class);
+//                    ExpressionEncoder<Events> eventsExpressionEncoder = (ExpressionEncoder<Events>) eventsEncoder;
+//                    ExpressionEncoder.Serializer<Events> eventsSerializer = eventsExpressionEncoder.createSerializer();
+//                    row = eventsSerializer.apply(xmlValue);
+               //}
             //}
         } catch (MalformedChunkException | IOException e) {
             log.debug(String.valueOf(e));
@@ -115,11 +129,11 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlValue.values().toArray()).iterator()).asScala().toSeq());
+        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
+
     }
 
     public static Object convertNodesFromXml(String xml) throws Exception {
-
         InputStream is = new ByteArrayInputStream(xml.getBytes());
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(true);
@@ -159,6 +173,41 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         }
         return map;
     }
+
+    public Object[] toObjectArray(HashMap<String, Object> data, StructType parentField, List<Function> parentValueConverters) {
+        StructField[] fields = parentField.fields();
+        Object[] parentConvertedValues = new Object[fields.length];
+
+        for (int i = 0; i < fields.length; i++) {
+            StructField field = fields[i];
+
+            if(!data.containsKey(field.name())) {
+                parentConvertedValues[i] = null;
+            } else {
+                DataType childField = field.dataType();
+
+                if (childField instanceof StructType) {
+                    HashMap<String, Object> child = (HashMap<String, Object>) data.get(field.name());
+                    List<Function> childValueConverters = (List<Function>) parentValueConverters.get(i).apply((StructType) childField);
+
+                    parentConvertedValues[i] = toObjectArray(child, (StructType) childField, childValueConverters);
+                } else {
+                    parentConvertedValues[i] = parentValueConverters.get(i).apply((String) data.get(field.name()));
+                }
+            }
+        }
+
+        return parentConvertedValues;
+    }
+
+//    public static Events convertNodesFromXml(String xml) throws Exception {
+//        InputStream is = new ByteArrayInputStream(xml.getBytes());
+//        JAXBContext jaxbc = JAXBContext.newInstance(Events.class);
+//        Unmarshaller unmarshaller = jaxbc.createUnmarshaller();
+//        Events events = (Events) unmarshaller.unmarshal(is);
+//
+//        return events;
+//    }
 
     @Override
     public void close() throws IOException {

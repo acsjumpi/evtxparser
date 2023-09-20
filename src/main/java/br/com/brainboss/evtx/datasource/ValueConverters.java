@@ -5,12 +5,16 @@ import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.unsafe.types.UTF8String;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.function.Function;
 
 public class ValueConverters {
+    private static final String CUSTOM_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss.SSS";
 
     public static List<Function> getConverters(StructType schema) {
         StructField[] fields = schema.fields();
@@ -22,6 +26,10 @@ public class ValueConverters {
                 valueConverters.add(IntConverter);
             else if (field.dataType().equals(DataTypes.DoubleType))
                 valueConverters.add(DoubleConverter);
+            else if (field.dataType().equals(DataTypes.TimestampType))
+                valueConverters.add(TimestampConverter);
+            else if (field.dataType() instanceof StructType)
+                valueConverters.add(StructConverter);
         });
         return valueConverters;
     }
@@ -30,5 +38,18 @@ public class ValueConverters {
     public static Function<String, UTF8String> UTF8StringConverter = UTF8String::fromString;
     public static Function<String, Double> DoubleConverter = value -> value == null ? null : Double.parseDouble(value);
     public static Function<String, Integer> IntConverter = value -> value == null ? null : Integer.parseInt(value);
+    public static Function<StructType, List<Function>> StructConverter = value -> value == null ? null : getConverters(value);
+    public static Function<String, Date> TimestampConverter = value -> {
+        if (value == null) {
+            return null;
+        }
 
+        try {
+            return new SimpleDateFormat(CUSTOM_FORMAT_STRING).parse(value);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        } finally {
+            return null;
+        }
+    };
 }
