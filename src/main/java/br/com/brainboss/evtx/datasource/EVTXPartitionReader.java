@@ -13,6 +13,7 @@ import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import scala.collection.JavaConverters;
@@ -115,7 +116,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
 //                    this.iterateOverStruct(data, this.schema, this.valueConverters);
 
-                    xmlObject = this.toObjectArray(xmlMap, this.schema, this.valueConverters);
+                    xmlObject = this.toObjectArray((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
 
 //                    Encoder<Events> eventsEncoder = Encoders.bean(Events.class);
 //                    ExpressionEncoder<Events> eventsExpressionEncoder = (ExpressionEncoder<Events>) eventsEncoder;
@@ -145,12 +146,47 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     public static Object createMap(Node node) {
         Map<String, Object> map = new HashMap<String, Object>();
         NodeList nodeList = node.getChildNodes();
+
         for (int i = 0; i < nodeList.getLength(); i++) {
             Node currentNode = nodeList.item(i);
             String name = currentNode.getNodeName();
             Object value = null;
+
             if (currentNode.getNodeType() == Node.ELEMENT_NODE) {
                 value = createMap(currentNode);
+                if (currentNode.hasAttributes()) {
+                    NamedNodeMap attrs = currentNode.getAttributes();
+                    HashMap<String, Object> mapValues;
+                    if (value instanceof String) {
+                        mapValues = new HashMap<>();
+                        mapValues.put(name, value);
+                    } else {
+                        mapValues = (HashMap<String, Object>)value;
+                    }
+
+                    for (int j = 0; j < attrs.getLength(); j++) {
+                        Node attr = attrs.item(j);
+                        String attrName = attr.getNodeName();
+                        Object attrValue = attr.getNodeValue();
+
+                        if (mapValues.containsKey(attrName)) {
+                            Object os = mapValues.get(attrName);
+                            if (os instanceof List) {
+                                ((List<Object>)os).add(attrValue);
+                            }
+                            else {
+                                List<Object> objs = new LinkedList<Object>();
+                                objs.add(os);
+                                objs.add(attrValue);
+                                mapValues.put(attrName, objs);
+                            }
+                        }
+                        else {
+                            mapValues.put(attrName, attrValue);
+                        }
+                    }
+                    value = mapValues;
+                }
             }
             else if (currentNode.getNodeType() == Node.TEXT_NODE) {
                 return currentNode.getTextContent();
@@ -187,6 +223,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                 DataType childField = field.dataType();
 
                 if (childField instanceof StructType) {
+                    log.debug("Name: "+field.name());
                     HashMap<String, Object> child = (HashMap<String, Object>) data.get(field.name());
                     List<Function> childValueConverters = (List<Function>) parentValueConverters.get(i).apply((StructType) childField);
 
