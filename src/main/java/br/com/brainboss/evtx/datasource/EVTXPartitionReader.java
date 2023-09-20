@@ -8,7 +8,13 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import br.com.brainboss.evtx.parser.MalformedChunkException;
 import br.com.brainboss.evtx.parser.Record;
+import br.com.brainboss.schema.Event;
+import br.com.brainboss.schema.Events;
+import org.apache.spark.sql.Encoder;
+import org.apache.spark.sql.Encoders;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalyst.InternalRow;
+import org.apache.spark.sql.catalyst.encoders.ExpressionEncoder;
 import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.types.StructType;
 import org.w3c.dom.Document;
@@ -23,6 +29,8 @@ import java.util.function.Function;
 
 import org.apache.log4j.Logger;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.Unmarshaller;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -88,7 +96,8 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     @Override
     public InternalRow get() {
         log.debug("EVTXPartitionReader::get joined");
-        Map<String, Object>xmlValue;
+        Events xmlValue;
+        InternalRow row;
 
         try {
             //while (fileheader.hasNext()) {
@@ -105,9 +114,15 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                     //XStream xs = new XStream(new StaxDriver());
                     //xs.registerConverter(new MapEntryConverter());
                     //xs.alias("Events", Map.class);
-                    xmlValue = (Map<String, Object>) convertNodesFromXml(baos.toString());
+                    xmlValue = convertNodesFromXml(baos.toString());
                     log.debug(xmlValue);
-                //}
+
+                    Encoder<Events> eventsEncoder = Encoders.bean(Events.class);
+                    ExpressionEncoder<Events> eventsExpressionEncoder = (ExpressionEncoder<Events>) eventsEncoder;
+                    ExpressionEncoder.Serializer<Events> eventsSerializer = eventsExpressionEncoder.createSerializer();
+                    row = eventsSerializer.apply(xmlValue);
+
+               //}
             //}
         } catch (MalformedChunkException | IOException e) {
             log.debug(String.valueOf(e));
@@ -115,49 +130,18 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlValue.values().toArray()).iterator()).asScala().toSeq());
+        //return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlValue).iterator()).asScala().toSeq());
+        return row;
     }
 
-    public static Object convertNodesFromXml(String xml) throws Exception {
+    public static Events convertNodesFromXml(String xml) throws Exception {
 
         InputStream is = new ByteArrayInputStream(xml.getBytes());
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
-        DocumentBuilder db = dbf.newDocumentBuilder();
-        Document document = db.parse(is);
-        return createMap(document.getDocumentElement());
-    }
+        JAXBContext jaxbc = JAXBContext.newInstance(Events.class);
+        Unmarshaller unmarshaller = jaxbc.createUnmarshaller();
+        Events events = (Events) unmarshaller.unmarshal(is);
 
-    public static Object createMap(Node node) {
-        Map<String, Object> map = new HashMap<String, Object>();
-        NodeList nodeList = node.getChildNodes();
-        for (int i = 0; i < nodeList.getLength(); i++) {
-            Node currentNode = nodeList.item(i);
-            String name = currentNode.getNodeName();
-            Object value = null;
-            if (currentNode.getNodeType() == Node.ELEMENT_NODE) {
-                value = createMap(currentNode);
-            }
-            else if (currentNode.getNodeType() == Node.TEXT_NODE) {
-                return currentNode.getTextContent();
-            }
-            if (map.containsKey(name)) {
-                Object os = map.get(name);
-                if (os instanceof List) {
-                    ((List<Object>)os).add(value);
-                }
-                else {
-                    List<Object> objs = new LinkedList<Object>();
-                    objs.add(os);
-                    objs.add(value);
-                    map.put(name, objs);
-                }
-            }
-            else {
-                map.put(name, value);
-            }
-        }
-        return map;
+        return events;
     }
 
     @Override
