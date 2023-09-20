@@ -21,5 +21,5 @@ import java.io.InputStream;
 import org.apache.log4j.Logger;
 
 public interface FileHeaderFactory {
-    FileHeader create(InputStream inputStream, Logger componentLog) throws IOException;
+    FileHeader create(InputStream inputStream, Logger componentLog, Boolean flag) throws IOException;
 }
