@@ -24,6 +24,7 @@ import java.util.*;
 import java.util.function.Function;
 
 import org.apache.log4j.Logger;
+import scala.collection.Seq;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -122,8 +123,8 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
-
+//        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
+        return InternalRow.apply(this.toScalaSeq(xmlObject));
     }
 
     public static Object convertNodesFromXml(String xml) throws Exception {
@@ -227,6 +228,16 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         }
 
         return parentConvertedValues;
+    }
+
+    public Seq<Object> toScalaSeq(Object[] javaArr) {
+        for (int i = 0; i < javaArr.length; i++) {
+            if (javaArr[i] instanceof Object[]) {
+                javaArr[i] = this.toScalaSeq((Object[]) javaArr[i]);
+            };
+        }
+
+        return JavaConverters.asScalaIteratorConverter(Arrays.asList(javaArr).iterator()).asScala().toSeq();
     }
 
 //    public static Events convertNodesFromXml(String xml) throws Exception {

@@ -39,13 +39,13 @@ public class ValueConverters {
     public static Function<String, Double> DoubleConverter = value -> value == null ? null : Double.parseDouble(value);
     public static Function<String, Integer> IntConverter = value -> value == null ? null : Integer.parseInt(value);
     public static Function<StructType, List<Function>> StructConverter = value -> value == null ? null : getConverters(value);
-    public static Function<String, Date> TimestampConverter = value -> {
+    public static Function<String, Long> TimestampConverter = value -> {
         if (value == null) {
             return null;
         }
 
         try {
-            return new SimpleDateFormat(CUSTOM_FORMAT_STRING).parse(value);
+            return new SimpleDateFormat(CUSTOM_FORMAT_STRING).parse(value).toInstant().toEpochMilli() * 1000;
         } catch (ParseException e) {
             e.printStackTrace();
         } finally {
