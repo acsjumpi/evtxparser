@@ -1,5 +1,6 @@
 package br.com.brainboss.evtx.datasource;
 
+import org.apache.log4j.Logger;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
@@ -14,6 +15,8 @@ import java.util.List;
 import java.util.function.Function;
 
 public class ValueConverters {
+    private static final Logger log = Logger.getLogger(ValueConverters.class);
+
     private static final String CUSTOM_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss.SSS";
 
     public static List<Function> getConverters(StructType schema) {
@@ -45,10 +48,9 @@ public class ValueConverters {
         }
 
         try {
-            return new SimpleDateFormat(CUSTOM_FORMAT_STRING).parse(value).toInstant().toEpochMilli();
+            return new SimpleDateFormat(CUSTOM_FORMAT_STRING).parse(value).toInstant().toEpochMilli() *  1000;
         } catch (ParseException e) {
-            e.printStackTrace();
-        } finally {
+            log.error("Invalid date format!", e);
             return null;
         }
     };
