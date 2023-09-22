@@ -124,7 +124,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             throw new RuntimeException(e);
         }
 //        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
-        return InternalRow.fromSeq(this.toScalaSeq(xmlObject));
+        return this.toInternalRow(xmlObject);
     }
 
     public static Object convertNodesFromXml(String xml) throws Exception {
@@ -230,14 +230,14 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         return parentConvertedValues;
     }
 
-    public Seq<Object> toScalaSeq(Object[] javaArr) {
+    public InternalRow toInternalRow(Object[] javaArr) {
         for (int i = 0; i < javaArr.length; i++) {
             if (javaArr[i] instanceof Object[]) {
-                javaArr[i] = this.toScalaSeq((Object[]) javaArr[i]);
+                javaArr[i] = this.toInternalRow((Object[]) javaArr[i]);
             };
         }
 
-        return JavaConverters.asScalaIteratorConverter(Arrays.asList(javaArr).iterator()).asScala().toSeq();
+        return InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(javaArr).iterator()).asScala().toSeq());
     }
 
 //    public static Events convertNodesFromXml(String xml) throws Exception {
