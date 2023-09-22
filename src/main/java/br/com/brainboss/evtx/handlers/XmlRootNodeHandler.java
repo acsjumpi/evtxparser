@@ -34,13 +34,9 @@ public class XmlRootNodeHandler implements RootNodeHandler {
     private final XMLStreamWriter xmlStreamWriter;
     private final XmlBxmlNodeVisitorFactory xmlBxmlNodeVisitorFactory;
     private static final Logger log = Logger.getLogger(XmlRootNodeHandler.class);
-    private final ByteArrayOutputStream baos;
 
     public XmlRootNodeHandler(OutputStream outputStream) throws IOException {
-        //this(getXmlStreamWriter(new BufferedOutputStream(outputStream)), XmlBxmlNodeVisitor::new);
-        //this(getXmlStreamWriter(outputStream), XmlBxmlNodeVisitor::new);
-        this.baos = (ByteArrayOutputStream) outputStream;
-        this.xmlStreamWriter = getXmlStreamWriter(new BufferedOutputStream(baos));
+        this.xmlStreamWriter = getXmlStreamWriter(new BufferedOutputStream(outputStream));
         this.xmlBxmlNodeVisitorFactory = XmlBxmlNodeVisitor::new;
         start();
         log.debug("XmlRootNodeHandler Constructor joined");
@@ -71,14 +67,7 @@ public class XmlRootNodeHandler implements RootNodeHandler {
             throw new IOException(e);
         }
     }
-    public ByteArrayOutputStream getBaos() {
-        try {
-            close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return baos;
-    }
+
     @Override
     public void handle(RootNode rootNode) throws IOException {
         xmlBxmlNodeVisitorFactory.create(xmlStreamWriter, rootNode);

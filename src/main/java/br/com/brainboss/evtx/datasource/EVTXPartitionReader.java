@@ -87,7 +87,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     public InternalRow get() {
         log.debug("EVTXPartitionReader::get joined");
         HashMap<String, Object> xmlMap;
-        Object[] xmlObject;
+        InternalRow row;
 
         try {
             //while (fileheader.hasNext()) {
@@ -107,9 +107,10 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                     xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
                     log.debug(xmlMap);
 
+                    row = this.toInternalRow((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
 //                    this.iterateOverStruct(data, this.schema, this.valueConverters);
 
-                    xmlObject = this.toObjectArray((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
+//                    xmlObject = this.toObjectArray((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
 
 //                    Encoder<Events> eventsEncoder = Encoders.bean(Events.class);
 //                    ExpressionEncoder<Events> eventsExpressionEncoder = (ExpressionEncoder<Events>) eventsEncoder;
@@ -124,7 +125,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             throw new RuntimeException(e);
         }
 //        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
-        return this.toInternalRow(xmlObject);
+        return row;
     }
 
     public static Object convertNodesFromXml(String xml) throws Exception {
@@ -203,7 +204,34 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         return map;
     }
 
-    public Object[] toObjectArray(HashMap<String, Object> data, StructType parentField, List<Function> parentValueConverters) {
+//    public Object[] toObjectArray(HashMap<String, Object> data, StructType parentField, List<Function> parentValueConverters) {
+//        StructField[] fields = parentField.fields();
+//        Object[] parentConvertedValues = new Object[fields.length];
+//
+//        for (int i = 0; i < fields.length; i++) {
+//            StructField field = fields[i];
+//
+//            if(!data.containsKey(field.name())) {
+//                parentConvertedValues[i] = null;
+//            } else {
+//                DataType childField = field.dataType();
+//
+//                if (childField instanceof StructType) {
+//                    log.debug("Name: "+field.name());
+//                    HashMap<String, Object> child = (HashMap<String, Object>) data.get(field.name());
+//                    List<Function> childValueConverters = (List<Function>) parentValueConverters.get(i).apply((StructType) childField);
+//
+//                    parentConvertedValues[i] = toObjectArray(child, (StructType) childField, childValueConverters);
+//                } else {
+//                    parentConvertedValues[i] = parentValueConverters.get(i).apply((String) data.get(field.name()));
+//                }
+//            }
+//        }
+//
+//        return parentConvertedValues;
+//    }
+
+    public InternalRow toInternalRow(HashMap<String, Object> data, StructType parentField, List<Function> parentValueConverters) {
         StructField[] fields = parentField.fields();
         Object[] parentConvertedValues = new Object[fields.length];
 
@@ -220,25 +248,25 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                     HashMap<String, Object> child = (HashMap<String, Object>) data.get(field.name());
                     List<Function> childValueConverters = (List<Function>) parentValueConverters.get(i).apply((StructType) childField);
 
-                    parentConvertedValues[i] = toObjectArray(child, (StructType) childField, childValueConverters);
+                    parentConvertedValues[i] = toInternalRow(child, (StructType) childField, childValueConverters);
                 } else {
                     parentConvertedValues[i] = parentValueConverters.get(i).apply((String) data.get(field.name()));
                 }
             }
         }
 
-        return parentConvertedValues;
+        return InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(parentConvertedValues).iterator()).asScala().toSeq());
     }
 
-    public InternalRow toInternalRow(Object[] javaArr) {
-        for (int i = 0; i < javaArr.length; i++) {
-            if (javaArr[i] instanceof Object[]) {
-                javaArr[i] = this.toInternalRow((Object[]) javaArr[i]);
-            };
-        }
-
-        return InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(javaArr).iterator()).asScala().toSeq());
-    }
+//    public InternalRow toInternalRow(Object[] javaArr) {
+//        for (int i = 0; i < javaArr.length; i++) {
+//            if (javaArr[i] instanceof Object[]) {
+//                javaArr[i] = this.toInternalRow((Object[]) javaArr[i]);
+//            };
+//        }
+//
+//        return InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(javaArr).iterator()).asScala().toSeq());
+//    }
 
 //    public static Events convertNodesFromXml(String xml) throws Exception {
 //        InputStream is = new ByteArrayInputStream(xml.getBytes());
