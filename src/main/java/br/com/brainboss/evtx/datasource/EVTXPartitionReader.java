@@ -148,9 +148,11 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
             if (currentNode.getNodeType() == Node.ELEMENT_NODE) {
                 value = createMap(currentNode);
+
                 if (currentNode.hasAttributes()) {
                     NamedNodeMap attrs = currentNode.getAttributes();
                     HashMap<String, Object> mapValues;
+
                     if (value instanceof String) {
                         mapValues = new HashMap<>();
                         mapValues.put(name, value);
@@ -185,6 +187,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             else if (currentNode.getNodeType() == Node.TEXT_NODE) {
                 return currentNode.getTextContent();
             }
+
             if (map.containsKey(name)) {
                 Object os = map.get(name);
                 if (os instanceof List) {
@@ -203,33 +206,6 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         }
         return map;
     }
-
-//    public Object[] toObjectArray(HashMap<String, Object> data, StructType parentField, List<Function> parentValueConverters) {
-//        StructField[] fields = parentField.fields();
-//        Object[] parentConvertedValues = new Object[fields.length];
-//
-//        for (int i = 0; i < fields.length; i++) {
-//            StructField field = fields[i];
-//
-//            if(!data.containsKey(field.name())) {
-//                parentConvertedValues[i] = null;
-//            } else {
-//                DataType childField = field.dataType();
-//
-//                if (childField instanceof StructType) {
-//                    log.debug("Name: "+field.name());
-//                    HashMap<String, Object> child = (HashMap<String, Object>) data.get(field.name());
-//                    List<Function> childValueConverters = (List<Function>) parentValueConverters.get(i).apply((StructType) childField);
-//
-//                    parentConvertedValues[i] = toObjectArray(child, (StructType) childField, childValueConverters);
-//                } else {
-//                    parentConvertedValues[i] = parentValueConverters.get(i).apply((String) data.get(field.name()));
-//                }
-//            }
-//        }
-//
-//        return parentConvertedValues;
-//    }
 
     public InternalRow toInternalRow(HashMap<String, Object> data, StructType parentField, List<Function> parentValueConverters) {
         StructField[] fields = parentField.fields();
@@ -257,25 +233,6 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
         return InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(parentConvertedValues).iterator()).asScala().toSeq());
     }
-
-//    public InternalRow toInternalRow(Object[] javaArr) {
-//        for (int i = 0; i < javaArr.length; i++) {
-//            if (javaArr[i] instanceof Object[]) {
-//                javaArr[i] = this.toInternalRow((Object[]) javaArr[i]);
-//            };
-//        }
-//
-//        return InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(javaArr).iterator()).asScala().toSeq());
-//    }
-
-//    public static Events convertNodesFromXml(String xml) throws Exception {
-//        InputStream is = new ByteArrayInputStream(xml.getBytes());
-//        JAXBContext jaxbc = JAXBContext.newInstance(Events.class);
-//        Unmarshaller unmarshaller = jaxbc.createUnmarshaller();
-//        Events events = (Events) unmarshaller.unmarshal(is);
-//
-//        return events;
-//    }
 
     @Override
     public void close() throws IOException {
