@@ -124,7 +124,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             throw new RuntimeException(e);
         }
 //        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
-        return InternalRow.apply(this.toScalaSeq(xmlObject));
+        return InternalRow.fromSeq(this.toScalaSeq(xmlObject));
     }
 
     public static Object convertNodesFromXml(String xml) throws Exception {
