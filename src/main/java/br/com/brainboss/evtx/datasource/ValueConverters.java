@@ -45,7 +45,7 @@ public class ValueConverters {
         }
 
         try {
-            return new SimpleDateFormat(CUSTOM_FORMAT_STRING).parse(value).toInstant().toEpochMilli();
+            return new SimpleDateFormat(CUSTOM_FORMAT_STRING).parse(value).toInstant().toEpochMilli() * 1000;
         } catch (ParseException e) {
             e.printStackTrace();
         } finally {

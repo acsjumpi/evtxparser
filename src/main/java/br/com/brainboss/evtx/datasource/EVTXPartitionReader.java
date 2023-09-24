@@ -24,7 +24,6 @@ import java.util.*;
 import java.util.function.Function;
 
 import org.apache.log4j.Logger;
-import scala.collection.Seq;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -220,12 +219,13 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                 DataType childField = field.dataType();
 
                 if (childField instanceof StructType) {
-                    log.debug("Name: "+field.name());
+                    log.debug("Node: " + field.name());
                     HashMap<String, Object> child = (HashMap<String, Object>) data.get(field.name());
                     List<Function> childValueConverters = (List<Function>) parentValueConverters.get(i).apply((StructType) childField);
 
                     parentConvertedValues[i] = toInternalRow(child, (StructType) childField, childValueConverters);
                 } else {
+                    log.debug("Leaf: " + field.name());
                     parentConvertedValues[i] = parentValueConverters.get(i).apply((String) data.get(field.name()));
                 }
             }
