@@ -171,4 +171,21 @@ public class FileHeader extends Block {
             return null;
         }
     }
+
+    public ChunkHeader next(long chunkNumber) throws MalformedChunkException, IOException {
+        if (count.compareTo(chunkCount) <= 0) {
+            long currentOffset = this.currentOffset;
+            this.currentOffset += chunkNumber * CHUNK_SIZE;
+            BinaryReader binaryReader = new BinaryReader(inputStream, CHUNK_SIZE);
+            try {
+                UnsignedInteger oldCount = count;
+                count = count.plus(UnsignedInteger.valueOf(chunkNumber));
+                return new ChunkHeader(binaryReader, log, currentOffset, oldCount);
+            } catch (IOException e) {
+                throw new MalformedChunkException("Malformed chunk, unable to parse", e, currentOffset, count.minus(UnsignedInteger.valueOf(chunkNumber)), binaryReader.getBytes());
+            }
+        } else {
+            return null;
+        }
+    }
 }

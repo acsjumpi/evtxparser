@@ -5,13 +5,23 @@ import org.apache.spark.sql.connector.read.InputPartition;
 
 public class EVTXInputPartition implements InputPartition {
 
-    private final UnsignedInteger chunkNumber;
-    public EVTXInputPartition(UnsignedInteger chunkNumber){
-        this.chunkNumber = chunkNumber;
+    private final int partitionNumber;
+    private final int groupSize;
+    public EVTXInputPartition(int partitionNumber, int groupSize){
+        this.partitionNumber = partitionNumber;
+        this.groupSize = groupSize;
     }
 
-    public UnsignedInteger getChunkNumber(){
-        return chunkNumber;
+    public int getPartitionNumber(){
+        return partitionNumber;
+    }
+
+    public UnsignedInteger getFirstChunk(){
+        return UnsignedInteger.valueOf((partitionNumber) * groupSize);
+    }
+
+    public UnsignedInteger getLastChunk(){
+        return UnsignedInteger.valueOf(((partitionNumber + 1) * groupSize) - 1);
     }
     @Override
     public String[] preferredLocations() {

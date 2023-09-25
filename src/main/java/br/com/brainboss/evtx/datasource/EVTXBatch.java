@@ -26,6 +26,8 @@ public class EVTXBatch implements Batch {
     private final CaseInsensitiveStringMap options;
     private String filename;
     private static final Logger log = Logger.getLogger(EVTXBatch.class);
+    private static final UnsignedInteger MAX_PARTITIONS = UnsignedInteger.valueOf(32);
+
     public EVTXBatch(StructType schema,
                     Map<String, String> properties,
                     CaseInsensitiveStringMap options) {
@@ -61,8 +63,11 @@ public class EVTXBatch implements Batch {
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
             chunkCount = fileheader.getChunkCount();
 
-            for(UnsignedInteger i = UnsignedInteger.ZERO; i.compareTo(chunkCount) < 0; i = i.plus(UnsignedInteger.ONE))
-                partitions.add(new EVTXInputPartition(i));
+            int numPartitions = (chunkCount.compareTo(MAX_PARTITIONS) < 0 ? chunkCount : MAX_PARTITIONS).intValue();
+            int groupSize = (chunkCount.dividedBy(UnsignedInteger.valueOf(numPartitions))).intValue();
+
+            for(int i = 0; i < numPartitions; i++)
+                partitions.add(new EVTXInputPartition(i, groupSize));
 
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);

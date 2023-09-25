@@ -64,8 +64,10 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             fileheader = fileheaderfactory.create(filereader, log, true);
             chunkheader = fileheader.next();
 
-            while(fileheader.hasNext() & chunkheader.getChunkNumber().compareTo(evtxInputPartition.getChunkNumber()) < 0)
+            while(fileheader.hasNext() & chunkheader.getChunkNumber().compareTo(evtxInputPartition.getFirstChunk()) < 0)
                 chunkheader = fileheader.next();
+
+//            chunkheader = fileheader.next(evtxInputPartition.getFirstChunk().longValue());
 
             log.debug("chunkNumber"+chunkheader.getChunkNumber());
         } catch (FileNotFoundException e) {
@@ -94,7 +96,8 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 //            return false;
 //        }
 //        return chunkheader.hasNext();
-        return chunkheader.hasNext();
+
+        return chunkheader.getChunkNumber().compareTo(evtxInputPartition.getLastChunk()) < 0;
     }
 
     @Override
