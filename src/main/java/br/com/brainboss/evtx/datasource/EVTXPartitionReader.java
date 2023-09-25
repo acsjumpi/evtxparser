@@ -230,6 +230,9 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
             if(!data.containsKey(field.name())) {
                 parentConvertedValues[i] = null;
+                if (!field.nullable()){
+                    throw new RuntimeException(field.name()+" Is not nullable.");
+                }
             } else {
                 DataType childField = field.dataType();
 
