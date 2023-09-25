@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.zip.CRC32;
 import org.apache.log4j.Logger;
 
@@ -50,12 +49,12 @@ public class ChunkHeader extends Block {
     private final UnsignedInteger headerChecksum;
     private final Map<Integer, NameStringNode> nameStrings;
     private final Map<Integer, TemplateNode> templateNodes;
-    private final int chunkNumber;
+    private final UnsignedInteger chunkNumber;
 
     private final Logger log;
     private UnsignedLong recordNumber;
 
-    public ChunkHeader(BinaryReader binaryReader, Logger log, long headerOffset, int chunkNumber) throws IOException {
+    public ChunkHeader(BinaryReader binaryReader, Logger log, long headerOffset, UnsignedInteger chunkNumber) throws IOException {
         super(binaryReader, headerOffset);
         this.chunkNumber = chunkNumber;
         CRC32 crc32 = new CRC32();
@@ -182,7 +181,7 @@ public class ChunkHeader extends Block {
         return Collections.unmodifiableMap(templateNodes);
     }
 
-    public int getChunkNumber() {
+    public UnsignedInteger getChunkNumber() {
         return chunkNumber;
     }
 

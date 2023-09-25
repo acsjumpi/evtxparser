@@ -59,12 +59,12 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             log.debug("CreateEvtxReader joined");
             FileInputStream filereader;
             //URL resource = this.getClass().getClassLoader().getResource(this.fileName);
-            log.debug("fileName"+this.fileName);
+            log.debug("fileName "+this.fileName);
             filereader = new FileInputStream(new File(this.fileName));
             fileheader = fileheaderfactory.create(filereader, log, true);
             chunkheader = fileheader.next();
 
-            while(fileheader.hasNext() & chunkheader.getChunkNumber() < evtxInputPartition.getChunkNumber())
+            while(fileheader.hasNext() & chunkheader.getChunkNumber().compareTo(evtxInputPartition.getChunkNumber()) < 0)
                 chunkheader = fileheader.next();
 
             log.debug("chunkNumber"+chunkheader.getChunkNumber());
@@ -72,13 +72,28 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
-        } catch (MalformedChunkException e) {
+        }
+        catch (MalformedChunkException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
     public boolean next() {
+//        if (chunkheader.hasNext())
+//            return true;
+//        if (fileheader.hasNext()) {
+//            try {
+//                chunkheader = fileheader.next();
+//            } catch (MalformedChunkException e) {
+//                throw new RuntimeException(e);
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//        } else {
+//            return false;
+//        }
+//        return chunkheader.hasNext();
         return chunkheader.hasNext();
     }
 

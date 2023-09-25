@@ -4,6 +4,7 @@ import br.com.brainboss.evtx.parser.ChunkHeader;
 import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import br.com.brainboss.evtx.parser.MalformedChunkException;
+import com.google.common.primitives.UnsignedInteger;
 import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
@@ -38,6 +39,7 @@ public class EVTXBatch implements Batch {
     @Override
     public InputPartition[] planInputPartitions() {
         log.debug("planInputPartitions joined");
+//        return new InputPartition[]{new EVTXInputPartition()};
         return createPartitions();
     }
 
@@ -50,7 +52,7 @@ public class EVTXBatch implements Batch {
 
     private InputPartition[] createPartitions(){
         List<InputPartition> partitions = new ArrayList<>();
-        int chunkCount = 0;
+        UnsignedInteger chunkCount = UnsignedInteger.ZERO;
         try {
             log.debug("CreatePartitions joined");
             log.debug("fileName"+this.filename);
@@ -59,7 +61,7 @@ public class EVTXBatch implements Batch {
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
             chunkCount = fileheader.getChunkCount();
 
-            for(int i=0; i < chunkCount; i++)
+            for(UnsignedInteger i = UnsignedInteger.ZERO; i.compareTo(chunkCount) < 0; i = i.plus(UnsignedInteger.ONE))
                 partitions.add(new EVTXInputPartition(i));
 
         } catch (FileNotFoundException e) {
@@ -68,6 +70,6 @@ public class EVTXBatch implements Batch {
             throw new RuntimeException(e);
         }
 
-        return partitions.toArray(new InputPartition[chunkCount]);
+        return partitions.toArray(new InputPartition[chunkCount.intValue()]);
     }
 }

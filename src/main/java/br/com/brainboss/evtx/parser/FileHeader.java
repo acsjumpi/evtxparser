@@ -38,14 +38,14 @@ public class FileHeader extends Block {
     private final int minorVersion;
     private final int majorVersion;
     private final int headerChunkSize;
-    private final int chunkCount;
+    private final UnsignedInteger chunkCount;
     private final String unused1;
     private final UnsignedInteger flags;
     private final UnsignedInteger checksum;
     private final InputStream inputStream;
     private final Logger log;
     private long currentOffset;
-    private int count = 1;
+    private UnsignedInteger count = UnsignedInteger.valueOf(1);
 
     public FileHeader(InputStream inputStream, Logger log, Boolean init) throws IOException {
         super(new BinaryReader(inputStream, 4096));
@@ -66,8 +66,8 @@ public class FileHeader extends Block {
         minorVersion = binaryReader.readWord();
         majorVersion = binaryReader.readWord();
         headerChunkSize = binaryReader.readWord();
-        chunkCount = binaryReader.readWord();
-        unused1 = binaryReader.readString(76);
+        chunkCount = binaryReader.readDWord();
+        unused1 = binaryReader.readString(74);
 
         // Not part of checksum
         flags = binaryReader.readDWord();
@@ -76,7 +76,7 @@ public class FileHeader extends Block {
         if (crc32.getValue() != checksum.longValue()) {
             throw new IOException("Invalid checksum");
         }
-        NumberUtil.intValueExpected(minorVersion, 2, "Invalid minor version.");
+        NumberUtil.intValueExpected(minorVersion, 1, "Invalid minor version.");
         NumberUtil.intValueExpected(majorVersion, 3, "Invalid major version.");
         NumberUtil.intValueExpected(headerChunkSize, 4096, "Invalid header chunk size.");
         this.inputStream = inputStream;
@@ -124,7 +124,7 @@ public class FileHeader extends Block {
         return headerChunkSize;
     }
 
-    public int getChunkCount() {
+    public UnsignedInteger getChunkCount() {
         return chunkCount;
     }
 
@@ -145,7 +145,7 @@ public class FileHeader extends Block {
      * @return true if there are chunks left
      */
     public boolean hasNext() {
-        return count <= chunkCount;
+        return count.compareTo(chunkCount) <= 0;
     }
 
     /**
@@ -156,14 +156,16 @@ public class FileHeader extends Block {
      * @throws IOException if there is an exception creating the BinaryReader
      */
     public ChunkHeader next() throws MalformedChunkException, IOException {
-        if (count <= chunkCount) {
+        if (count.compareTo(chunkCount) <= 0) {
             long currentOffset = this.currentOffset;
             this.currentOffset += CHUNK_SIZE;
             BinaryReader binaryReader = new BinaryReader(inputStream, CHUNK_SIZE);
             try {
-                return new ChunkHeader(binaryReader, log, currentOffset, count++);
+                UnsignedInteger oldCount = count;
+                count = count.plus(UnsignedInteger.valueOf(1));
+                return new ChunkHeader(binaryReader, log, currentOffset, oldCount);
             } catch (IOException e) {
-                throw new MalformedChunkException("Malformed chunk, unable to parse", e, currentOffset, count - 1, binaryReader.getBytes());
+                throw new MalformedChunkException("Malformed chunk, unable to parse", e, currentOffset, count.minus(UnsignedInteger.valueOf(1)), binaryReader.getBytes());
             }
         } else {
             return null;

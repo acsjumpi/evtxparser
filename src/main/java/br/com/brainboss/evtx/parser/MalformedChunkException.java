@@ -17,16 +17,19 @@ package br.com.brainboss.evtx.parser;
  * limitations under the License.
  */
 
+import com.google.common.primitives.UnsignedInteger;
+import com.google.common.primitives.UnsignedLong;
+
 /**
  * Exception when a chunk is malformed.
  * Chunks are independent within the file so we should be able to safely continue processing the remaining chunks.
  */
 public class MalformedChunkException extends Exception {
     private final long offset;
-    private final int chunkNum;
+    private final UnsignedInteger chunkNum;
     private byte[] badChunk;
 
-    public MalformedChunkException(String message, Throwable cause, long offset, int chunkNum, byte[] badChunk) {
+    public MalformedChunkException(String message, Throwable cause, long offset, UnsignedInteger chunkNum, byte[] badChunk) {
         super(message, cause);
         this.offset = offset;
         this.chunkNum = chunkNum;
@@ -37,7 +40,7 @@ public class MalformedChunkException extends Exception {
         return badChunk;
     }
 
-    public int getChunkNum() {
+    public UnsignedInteger getChunkNum() {
         return chunkNum;
     }
 }

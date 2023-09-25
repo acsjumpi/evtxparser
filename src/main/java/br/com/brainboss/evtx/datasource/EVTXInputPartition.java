@@ -1,15 +1,16 @@
 package br.com.brainboss.evtx.datasource;
 
+import com.google.common.primitives.UnsignedInteger;
 import org.apache.spark.sql.connector.read.InputPartition;
 
 public class EVTXInputPartition implements InputPartition {
 
-    private final int chunkNumber;
-    public EVTXInputPartition(int chunkNumber){
+    private final UnsignedInteger chunkNumber;
+    public EVTXInputPartition(UnsignedInteger chunkNumber){
         this.chunkNumber = chunkNumber;
     }
 
-    public int getChunkNumber(){
+    public UnsignedInteger getChunkNumber(){
         return chunkNumber;
     }
     @Override
