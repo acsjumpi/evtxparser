@@ -176,7 +176,7 @@ public class FileHeader extends Block {
         if (count.compareTo(chunkCount) <= 0) {
             long currentOffset = this.currentOffset;
             this.currentOffset += chunkNumber * CHUNK_SIZE;
-            BinaryReader binaryReader = new BinaryReader(inputStream, CHUNK_SIZE);
+            BinaryReader binaryReader = new BinaryReader(inputStream, (int) (chunkNumber * CHUNK_SIZE));
             try {
                 UnsignedInteger oldCount = count;
                 count = count.plus(UnsignedInteger.valueOf(chunkNumber));

@@ -97,7 +97,29 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 //        }
 //        return chunkheader.hasNext();
 
-        return chunkheader.getChunkNumber().compareTo(evtxInputPartition.getLastChunk()) < 0;
+        if(chunkheader.hasNext())
+            return true;
+        else {
+            try {
+                if(evtxInputPartition.isLast()) {
+                    if (fileheader.hasNext()) {
+                        chunkheader = fileheader.next();
+                        return true;
+                    }
+                    return false;
+                }
+                if(chunkheader.getChunkNumber().compareTo(evtxInputPartition.getLastChunk()) >= 0)
+                    return false;
+                chunkheader = fileheader.next();
+            } catch (MalformedChunkException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
+        return chunkheader.hasNext();
     }
 
     @Override

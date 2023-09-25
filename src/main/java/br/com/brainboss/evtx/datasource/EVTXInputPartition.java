@@ -7,9 +7,12 @@ public class EVTXInputPartition implements InputPartition {
 
     private final int partitionNumber;
     private final int groupSize;
-    public EVTXInputPartition(int partitionNumber, int groupSize){
+
+    private final boolean last;
+    public EVTXInputPartition(int partitionNumber, int groupSize, boolean last){
         this.partitionNumber = partitionNumber;
         this.groupSize = groupSize;
+        this.last = last;
     }
 
     public int getPartitionNumber(){
@@ -22,6 +25,10 @@ public class EVTXInputPartition implements InputPartition {
 
     public UnsignedInteger getLastChunk(){
         return UnsignedInteger.valueOf(((partitionNumber + 1) * groupSize) - 1);
+    }
+
+    public boolean isLast(){
+        return last;
     }
     @Override
     public String[] preferredLocations() {

@@ -5,6 +5,7 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import br.com.brainboss.evtx.parser.MalformedChunkException;
 import com.google.common.primitives.UnsignedInteger;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
@@ -24,9 +25,9 @@ public class EVTXBatch implements Batch {
     private final StructType schema;
     private final Map<String, String> properties;
     private final CaseInsensitiveStringMap options;
-    private String filename;
+    private final String filename;
+    private final Integer numPartitions;
     private static final Logger log = Logger.getLogger(EVTXBatch.class);
-    private static final UnsignedInteger MAX_PARTITIONS = UnsignedInteger.valueOf(32);
 
     public EVTXBatch(StructType schema,
                     Map<String, String> properties,
@@ -36,6 +37,7 @@ public class EVTXBatch implements Batch {
         this.properties = properties;
         this.options = options;
         this.filename = options.get("fileName");
+        this.numPartitions = Integer.parseInt(options.get("numPartitions"));
     }
 
     @Override
@@ -63,11 +65,11 @@ public class EVTXBatch implements Batch {
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
             chunkCount = fileheader.getChunkCount();
 
-            int numPartitions = (chunkCount.compareTo(MAX_PARTITIONS) < 0 ? chunkCount : MAX_PARTITIONS).intValue();
+            int numPartitions = this.numPartitions == null ? chunkCount.intValue() : this.numPartitions;
             int groupSize = (chunkCount.dividedBy(UnsignedInteger.valueOf(numPartitions))).intValue();
 
             for(int i = 0; i < numPartitions; i++)
-                partitions.add(new EVTXInputPartition(i, groupSize));
+                partitions.add(new EVTXInputPartition(i, groupSize, i+1 == numPartitions));
 
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
