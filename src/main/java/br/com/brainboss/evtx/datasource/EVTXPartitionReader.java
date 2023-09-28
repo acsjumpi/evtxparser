@@ -135,6 +135,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     //BufferedOutputStream out = new BufferedOutputStream(baos);
                     XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(baos);
+                    log.debug("Chunk index: "+chunkheader.getChunkNumber());
                     Record record = chunkheader.next();
                     rootNodeHandler.handle(record.getRootNode());
                     rootNodeHandler.close();
@@ -158,7 +159,8 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                //}
             //}
         } catch (MalformedChunkException | IOException e) {
-            log.debug(String.valueOf(e));
+            //log.debug(String.valueOf(e));
+            e.printStackTrace();
             throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -180,6 +182,9 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         Map<String, Object> map = new HashMap<String, Object>();
         NodeList nodeList = node.getChildNodes();
 
+        if (nodeList.getLength() == 0)
+            return null;
+
         for (int i = 0; i < nodeList.getLength(); i++) {
             Node currentNode = nodeList.item(i);
             String name = currentNode.getNodeName();
@@ -192,7 +197,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                     NamedNodeMap attrs = currentNode.getAttributes();
                     HashMap<String, Object> mapValues;
 
-                    if (value instanceof String) {
+                    if (value instanceof String || value == null) {
                         mapValues = new HashMap<>();
                         mapValues.put(name, value);
                     } else {
@@ -269,7 +274,12 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                     parentConvertedValues[i] = toInternalRow(child, (StructType) childField, childValueConverters);
                 } else {
                     log.debug("Leaf: " + field.name());
-                    parentConvertedValues[i] = parentValueConverters.get(i).apply((String) data.get(field.name()));
+                    try {
+                        parentConvertedValues[i] = parentValueConverters.get(i).apply((String) data.get(field.name()));
+                    } catch (ClassCastException cce) {
+                        log.debug("data.get: "+data.get(field.name()));
+                        throw(cce);
+                    }
                 }
             }
         }

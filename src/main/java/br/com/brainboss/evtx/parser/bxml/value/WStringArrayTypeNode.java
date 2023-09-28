@@ -19,12 +19,18 @@ package br.com.brainboss.evtx.parser.bxml.value;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
+
+import br.com.brainboss.evtx.datasource.EVTXPartitionReader;
 import br.com.brainboss.evtx.parser.BinaryReader;
 import br.com.brainboss.evtx.parser.ChunkHeader;
 import br.com.brainboss.evtx.parser.bxml.BxmlNode;
+import org.apache.log4j.Logger;
 
 /**
  * Node representing an array of wstring values
@@ -32,6 +38,7 @@ import br.com.brainboss.evtx.parser.bxml.BxmlNode;
 public class WStringArrayTypeNode extends VariantTypeNode {
     public static final XMLOutputFactory XML_OUTPUT_FACTORY = XMLOutputFactory.newFactory();
     private final String value;
+    private static final Logger log = Logger.getLogger(WStringArrayTypeNode.class);
 
     public WStringArrayTypeNode(BinaryReader binaryReader, ChunkHeader chunkHeader, BxmlNode parent, int length) throws IOException {
         super(binaryReader, chunkHeader, parent, length);
@@ -43,21 +50,31 @@ public class WStringArrayTypeNode extends VariantTypeNode {
             raw = binaryReader.readWString(binaryLength / 2);
         }
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        List<String> strings = new ArrayList<>();
         try {
-            XMLStreamWriter xmlStreamWriter = XML_OUTPUT_FACTORY.createXMLStreamWriter(stream, "UTF-8");
+            if (raw.equals("\u0000")) {
+                value = "";
+                return;
+            }
             for (String s : raw.split("\u0000")) {
+                XMLStreamWriter xmlStreamWriter = XML_OUTPUT_FACTORY.createXMLStreamWriter(stream, "UTF-8");
+                log.debug("s value: "+s);
                 xmlStreamWriter.writeStartElement("string");
                 try {
                     xmlStreamWriter.writeCharacters(s);
                 } finally {
                     xmlStreamWriter.writeEndElement();
+                    xmlStreamWriter.close();
+                    strings.add(stream.toString("UTF-8"));
+                    stream.reset();
                 }
             }
-            xmlStreamWriter.close();
         } catch (XMLStreamException e) {
+            log.error("StrArray content: "+raw);
+            log.error("Length size: "+length);
             throw new IOException(e);
         }
-        value = stream.toString("UTF-8");
+        value = strings.stream().collect(Collectors.joining());
     }
 
     @Override

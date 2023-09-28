@@ -26,7 +26,7 @@ public class EVTXBatch implements Batch {
     private final Map<String, String> properties;
     private final CaseInsensitiveStringMap options;
     private final String filename;
-    private final Integer numPartitions;
+    private final int numPartitions;
     private static final Logger log = Logger.getLogger(EVTXBatch.class);
 
     public EVTXBatch(StructType schema,
@@ -37,7 +37,7 @@ public class EVTXBatch implements Batch {
         this.properties = properties;
         this.options = options;
         this.filename = options.get("fileName");
-        this.numPartitions = Integer.parseInt(options.get("numPartitions"));
+        this.numPartitions = options.getInt("numPartitions", 0);
     }
 
     @Override
@@ -57,6 +57,7 @@ public class EVTXBatch implements Batch {
     private InputPartition[] createPartitions(){
         List<InputPartition> partitions = new ArrayList<>();
         UnsignedInteger chunkCount = UnsignedInteger.ZERO;
+        int numPartitions = 0;
         try {
             log.debug("CreatePartitions joined");
             log.debug("fileName"+this.filename);
@@ -65,7 +66,9 @@ public class EVTXBatch implements Batch {
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
             chunkCount = fileheader.getChunkCount();
 
-            int numPartitions = this.numPartitions == null ? chunkCount.intValue() : this.numPartitions;
+            numPartitions = this.numPartitions == 0 ? chunkCount.intValue() : this.numPartitions;
+            log.debug("Received numPartitions: "+this.numPartitions);
+            log.debug("After numPartitions definition: "+numPartitions);
             int groupSize = (chunkCount.dividedBy(UnsignedInteger.valueOf(numPartitions))).intValue();
 
             for(int i = 0; i < numPartitions; i++)
@@ -77,6 +80,6 @@ public class EVTXBatch implements Batch {
             throw new RuntimeException(e);
         }
 
-        return partitions.toArray(new InputPartition[chunkCount.intValue()]);
+        return partitions.toArray(new InputPartition[numPartitions]);
     }
 }

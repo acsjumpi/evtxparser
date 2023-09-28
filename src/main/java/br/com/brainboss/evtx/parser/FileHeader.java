@@ -69,6 +69,8 @@ public class FileHeader extends Block {
         chunkCount = binaryReader.readDWord();
         unused1 = binaryReader.readString(74);
 
+        log.debug("nextRecordNumber value: "+nextRecordNumber);
+
         // Not part of checksum
         flags = binaryReader.readDWord();
         checksum = binaryReader.readDWord();
