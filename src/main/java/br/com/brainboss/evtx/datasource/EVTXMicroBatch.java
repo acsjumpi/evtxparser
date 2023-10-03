@@ -72,6 +72,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
 
         log.debug("start: " + start);
         log.debug("end: " + end);
+        log.debug("unreadFiles.size: " + unreadFiles.size());
 
         FileStatus file = unreadFiles.remove((int) start);
         return createPartitions(file.getPath().toUri().getPath().toString());
