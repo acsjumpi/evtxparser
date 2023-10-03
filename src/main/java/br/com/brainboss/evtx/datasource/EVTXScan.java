@@ -2,6 +2,8 @@ package br.com.brainboss.evtx.datasource;
 
 import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.Scan;
+import org.apache.spark.sql.connector.read.streaming.ContinuousStream;
+import org.apache.spark.sql.connector.read.streaming.MicroBatchStream;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
@@ -37,5 +39,11 @@ public class EVTXScan implements Scan {
     public Batch toBatch() {
         log.debug("toBatch joined");
         return new EVTXBatch(schema,properties,options);
+    }
+
+    @Override
+    public MicroBatchStream toMicroBatchStream(String checkpointLocation) {
+        log.debug("toMicroBatchStream joined");
+        return new EVTXMicroBatch(schema,properties,options);
     }
 }

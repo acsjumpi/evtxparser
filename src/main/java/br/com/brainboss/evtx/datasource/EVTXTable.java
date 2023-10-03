@@ -45,7 +45,7 @@ public class EVTXTable implements SupportsRead {
         if (capabilities == null) {
             this.capabilities = new HashSet<>();
             capabilities.add(TableCapability.BATCH_READ);
-//            capabilities.add(TableCapability.CONTINUOUS_READ);
+            capabilities.add(TableCapability.MICRO_BATCH_READ);
         }
         return capabilities;
     }

@@ -19,9 +19,9 @@ public class EVTXPartitionReaderFactory implements PartitionReaderFactory {
     private final String filePath;
     private static final Logger log = Logger.getLogger(EVTXPartitionReaderFactory.class);
 
-    public EVTXPartitionReaderFactory(StructType schema, String fileName) {
+    public EVTXPartitionReaderFactory(StructType schema, String path) {
         this.schema = schema;
-        this.filePath = fileName;
+        this.filePath = path;
     }
 
     @Override
@@ -29,7 +29,7 @@ public class EVTXPartitionReaderFactory implements PartitionReaderFactory {
         log.debug("createReader joined");
         log.debug("filePath "+filePath);
         try {
-            return new EVTXPartitionReader((EVTXInputPartition) partition, schema, filePath);
+            return new EVTXPartitionReader((EVTXInputPartition) partition, schema);
         } catch (FileNotFoundException | URISyntaxException e) {
             log.debug(String.valueOf(e));
             e.printStackTrace();

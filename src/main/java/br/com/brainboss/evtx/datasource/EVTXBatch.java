@@ -72,7 +72,7 @@ public class EVTXBatch implements Batch {
             int groupSize = (chunkCount.dividedBy(UnsignedInteger.valueOf(numPartitions))).intValue();
 
             for(int i = 0; i < numPartitions; i++)
-                partitions.add(new EVTXInputPartition(i, groupSize, i+1 == numPartitions));
+                partitions.add(new EVTXInputPartition(this.filename, i, groupSize, i+1 == numPartitions));
 
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);

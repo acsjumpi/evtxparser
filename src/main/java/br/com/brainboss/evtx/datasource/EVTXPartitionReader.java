@@ -43,10 +43,9 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
     public EVTXPartitionReader(
             EVTXInputPartition evtxInputPartition,
-            StructType schema,
-            String fileName) throws IOException, URISyntaxException, MalformedChunkException {
+            StructType schema) throws IOException, URISyntaxException, MalformedChunkException {
         this.evtxInputPartition = evtxInputPartition;
-        this.fileName = fileName;
+        this.fileName = evtxInputPartition.getFilename();
         this.schema = schema;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
