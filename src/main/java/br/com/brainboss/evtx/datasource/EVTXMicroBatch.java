@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class EVTXMicroBatch implements MicroBatchStream {
     private final StructType schema;
@@ -55,7 +56,8 @@ public class EVTXMicroBatch implements MicroBatchStream {
             unreadFiles = allFiles.stream()
                     .filter(fileStatus -> isFileWithExtension(fileStatus, ".evtx"))
 //                    .map(FileStatus::getPath)
-                    .toList();
+                    .collect(Collectors.toList());
+
         }
 
         return new LongOffset(unreadFiles.size());
@@ -93,7 +95,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
         List<FileStatus> files;
         try{
             FileSystem fs = FileSystem.get(conf);
-            files = Arrays.stream(fs.listStatus(path)).toList();
+            files = Arrays.stream(fs.listStatus(path)).collect(Collectors.toList());
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
