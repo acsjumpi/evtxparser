@@ -34,7 +34,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
     private final String dir;
     private final int numPartitions;
     private static final Logger log = Logger.getLogger(EVTXMicroBatch.class);
-
+    private LongOffset lastOffsetCommitted = LongOffset.apply(-1);
     private List<FileStatus> unreadFiles = new ArrayList<>();
 
     public EVTXMicroBatch(StructType schema,
@@ -70,9 +70,18 @@ public class EVTXMicroBatch implements MicroBatchStream {
         long start = ((LongOffset)startOffset).offset() + 1;
         long end = ((LongOffset)endOffset).offset() + 1;
 
+        int sliceStart = (int) (start - lastOffsetCommitted.offset() - 1);
+        int sliceEnd = (int) (end - lastOffsetCommitted.offset() - 1);
+
         log.debug("start: " + start);
         log.debug("end: " + end);
+        log.debug("slicestart: " + sliceStart);
+        log.debug("sliceend: " + sliceEnd);
+        log.debug("lastOffsetCommitted: " + lastOffsetCommitted.offset());
         log.debug("unreadFiles.size: " + unreadFiles.size());
+
+        if(unreadFiles.isEmpty())
+            return new InputPartition[0];
 
         FileStatus file = unreadFiles.remove((int) start);
         return createPartitions(file.getPath().toUri().getPath().toString());
@@ -138,18 +147,23 @@ public class EVTXMicroBatch implements MicroBatchStream {
     @Override
     public Offset initialOffset() {
         log.debug("initialOffset joined");
-        return new LongOffset(-1);
+        return LongOffset.apply(-1);
     }
 
     @Override
     public Offset deserializeOffset(String json) {
         log.debug("deserializeOffset joined");
-        return new LongOffset(Long.valueOf(json));
+        return new LongOffset(Long.parseLong(json));
     }
 
     @Override
     public void commit(Offset end) {
         log.debug("commit joined");
+        LongOffset newOffset = (LongOffset) end;
+
+        long offsetDiff = (newOffset.offset() - lastOffsetCommitted.offset());
+
+        lastOffsetCommitted = newOffset;
     }
 
     @Override
