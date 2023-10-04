@@ -18,6 +18,7 @@ import org.apache.spark.sql.connector.read.streaming.Offset;
 import org.apache.spark.sql.execution.streaming.LongOffset;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.apache.spark.util.SerializableConfiguration;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -39,6 +40,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
     private LongOffset lastOffsetCommitted = LongOffset.apply(-1);
     private List<FileStatus> unreadFiles = new ArrayList<>();
     private FileSystem fs;
+    private final SerializableConfiguration sConf;
 
     public EVTXMicroBatch(StructType schema,
                           Map<String, String> properties,
@@ -49,6 +51,9 @@ public class EVTXMicroBatch implements MicroBatchStream {
         this.options = options;
         this.dir = options.get("path");
         this.numPartitions = options.getInt("numPartitions", 0);
+
+        Configuration conf = SparkContext.getOrCreate().hadoopConfiguration();
+        sConf = new SerializableConfiguration(conf);
     }
 
     @Override
@@ -93,7 +98,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
     @Override
     public PartitionReaderFactory createReaderFactory() {
         log.debug("createReaderFactory joined");
-        return new EVTXPartitionReaderFactory(schema, fs);
+        return new EVTXPartitionReaderFactory(schema, sConf);
     }
 
     private static boolean isFileWithExtension(FileStatus fileStatus, String desiredExtension) {
@@ -107,7 +112,8 @@ public class EVTXMicroBatch implements MicroBatchStream {
         List<FileStatus> files;
         try{
 //            FileSystem fs = FileSystem.get(conf);
-            fs = path.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
+
+            fs = path.getFileSystem(sConf.value());
             files = Arrays.stream(fs.listStatus(path)).collect(Collectors.toList());
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);

@@ -14,6 +14,7 @@ import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.apache.spark.util.SerializableConfiguration;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -44,15 +45,15 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     private final EVTXInputPartition evtxInputPartition;
     private List<Function> valueConverters;
     private final StructType schema;
-    private final FileSystem fs;
+    private final SerializableConfiguration sConf;
 
     public EVTXPartitionReader(
             EVTXInputPartition evtxInputPartition,
-            StructType schema, FileSystem fs) throws IOException, URISyntaxException, MalformedChunkException {
+            StructType schema, SerializableConfiguration sConf) throws IOException, URISyntaxException, MalformedChunkException {
         this.evtxInputPartition = evtxInputPartition;
         this.filePath = evtxInputPartition.getPath();
         this.schema = schema;
-        this.fs = fs;
+        this.sConf = sConf;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
         this.rootNodeHandlerFactory = XmlRootNodeHandler::new;
@@ -63,8 +64,9 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         try {
             log.debug("CreateEvtxReader joined");
             //URL resource = this.getClass().getClassLoader().getResource(this.fileName);
-            log.debug("fileName "+this.filePath.toString());
+            log.debug("fileName "+filePath.toString());
 
+            FileSystem fs = filePath.getFileSystem(sConf.value());
             FSDataInputStream filereader = fs.open(filePath);
             fileheader = fileheaderfactory.create(filereader, log, true);
             chunkheader = fileheader.next();

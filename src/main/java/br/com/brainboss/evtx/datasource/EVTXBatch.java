@@ -5,6 +5,7 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import br.com.brainboss.evtx.parser.MalformedChunkException;
 import com.google.common.primitives.UnsignedInteger;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.log4j.Logger;
+import org.apache.spark.util.SerializableConfiguration;
 
 public class EVTXBatch implements Batch {
     private final StructType schema;
@@ -32,7 +34,7 @@ public class EVTXBatch implements Batch {
     private final String filename;
     private final int numPartitions;
     private static final Logger log = Logger.getLogger(EVTXBatch.class);
-    private FileSystem fs;
+    private final SerializableConfiguration sConf;
 
     public EVTXBatch(StructType schema,
                     Map<String, String> properties,
@@ -43,6 +45,9 @@ public class EVTXBatch implements Batch {
         this.options = options;
         this.filename = options.get("fileName");
         this.numPartitions = options.getInt("numPartitions", 0);
+
+        Configuration conf = SparkContext.getOrCreate().hadoopConfiguration();
+        sConf = new SerializableConfiguration(conf);
     }
 
     @Override
@@ -55,7 +60,7 @@ public class EVTXBatch implements Batch {
     @Override
     public PartitionReaderFactory createReaderFactory() {
         log.debug("createReaderFactory joined");
-        return new EVTXPartitionReaderFactory(schema, fs);
+        return new EVTXPartitionReaderFactory(schema, sConf);
     }
 
     private InputPartition[] createPartitions(){
@@ -66,7 +71,7 @@ public class EVTXBatch implements Batch {
             log.debug("CreatePartitions joined");
             log.debug("fileName"+this.filename);
             Path filePath = new Path(filename);
-            fs = filePath.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
+            FileSystem fs = filePath.getFileSystem(sConf.value());
             FSDataInputStream filereader = fs.open(filePath);
             FileHeaderFactory fileheaderfactory = FileHeader::new;
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
