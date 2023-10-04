@@ -5,6 +5,10 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import br.com.brainboss.evtx.parser.MalformedChunkException;
 import com.google.common.primitives.UnsignedInteger;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.spark.SparkContext;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
@@ -61,7 +65,9 @@ public class EVTXBatch implements Batch {
         try {
             log.debug("CreatePartitions joined");
             log.debug("fileName"+this.filename);
-            FileInputStream filereader = new FileInputStream(new File(this.filename));
+            Path filePath = new Path(filename);
+            FileSystem fs = filePath.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
+            FSDataInputStream filereader = fs.open(filePath);
             FileHeaderFactory fileheaderfactory = FileHeader::new;
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
             chunkCount = fileheader.getChunkCount();
@@ -72,7 +78,7 @@ public class EVTXBatch implements Batch {
             int groupSize = (chunkCount.dividedBy(UnsignedInteger.valueOf(numPartitions))).intValue();
 
             for(int i = 0; i < numPartitions; i++)
-                partitions.add(new EVTXInputPartition(this.filename, i, groupSize, i+1 == numPartitions));
+                partitions.add(new EVTXInputPartition(filePath, i, groupSize, i+1 == numPartitions));
 
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);

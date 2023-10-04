@@ -7,6 +7,8 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import br.com.brainboss.evtx.parser.MalformedChunkException;
 import br.com.brainboss.evtx.parser.Record;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.spark.SparkContext;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.types.DataType;
@@ -17,6 +19,9 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import scala.collection.JavaConverters;
+
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 
 import java.io.*;
 import java.net.URISyntaxException;
@@ -30,7 +35,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
-    private final String fileName;
+    private final Path filePath;
     private final FileHeaderFactory fileheaderfactory;
     private static final Logger log = Logger.getLogger(EVTXPartitionReader.class);
     private FileHeader fileheader;
@@ -45,7 +50,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             EVTXInputPartition evtxInputPartition,
             StructType schema) throws IOException, URISyntaxException, MalformedChunkException {
         this.evtxInputPartition = evtxInputPartition;
-        this.fileName = evtxInputPartition.getFilename();
+        this.filePath = evtxInputPartition.getFilename();
         this.schema = schema;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
@@ -56,10 +61,11 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     private void createEvtxReader() {
         try {
             log.debug("CreateEvtxReader joined");
-            FileInputStream filereader;
             //URL resource = this.getClass().getClassLoader().getResource(this.fileName);
-            log.debug("fileName "+this.fileName);
-            filereader = new FileInputStream(new File(this.fileName));
+            log.debug("fileName "+this.filePath.toString());
+
+            FileSystem fs = this.filePath.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
+            FSDataInputStream filereader = fs.open(filePath);
             fileheader = fileheaderfactory.create(filereader, log, true);
             chunkheader = fileheader.next();
 

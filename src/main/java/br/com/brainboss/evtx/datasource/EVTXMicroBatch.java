@@ -4,10 +4,12 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import com.google.common.primitives.UnsignedInteger;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.log4j.Logger;
+import org.apache.spark.SparkContext;
 import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
@@ -36,6 +38,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
     private static final Logger log = Logger.getLogger(EVTXMicroBatch.class);
     private LongOffset lastOffsetCommitted = LongOffset.apply(-1);
     private List<FileStatus> unreadFiles = new ArrayList<>();
+    private FileSystem fs;
 
     public EVTXMicroBatch(StructType schema,
                           Map<String, String> properties,
@@ -84,7 +87,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
             return new InputPartition[0];
 
         FileStatus file = unreadFiles.remove((int) start);
-        return createPartitions(file.getPath().toUri().getPath().toString());
+        return createPartitions(file.getPath());
     }
 
     @Override
@@ -101,10 +104,11 @@ public class EVTXMicroBatch implements MicroBatchStream {
 
     private List<FileStatus> listFiles(){
         Path path = new Path(dir);
-        Configuration conf = new Configuration();
+//        Configuration conf = new Configuration();
         List<FileStatus> files;
         try{
-            FileSystem fs = FileSystem.get(conf);
+//            FileSystem fs = FileSystem.get(conf);
+            fs = path.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
             files = Arrays.stream(fs.listStatus(path)).collect(Collectors.toList());
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
@@ -115,14 +119,15 @@ public class EVTXMicroBatch implements MicroBatchStream {
         return files;
     }
 
-    private InputPartition[] createPartitions(String filename){
+    private InputPartition[] createPartitions(Path filename){
         List<InputPartition> partitions = new ArrayList<>();
         UnsignedInteger chunkCount = UnsignedInteger.ZERO;
         int numPartitions = 0;
         try {
             log.debug("CreatePartitions joined");
-            log.debug("filename "+filename);
-            FileInputStream filereader = new FileInputStream(new File(filename));
+            log.debug("filename "+filename.toString());
+//            FileInputStream filereader = new FileInputStream(new File(filename));
+            FSDataInputStream filereader = fs.open(filename);
             FileHeaderFactory fileheaderfactory = FileHeader::new;
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
             chunkCount = fileheader.getChunkCount();
