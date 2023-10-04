@@ -1,6 +1,7 @@
 package br.com.brainboss.evtx.datasource;
 
 import br.com.brainboss.evtx.parser.MalformedChunkException;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.log4j.Logger;
 import org.apache.spark.internal.Logging;
 import org.apache.spark.sql.catalyst.InternalRow;
@@ -16,20 +17,19 @@ import java.util.logging.Level;
 
 public class EVTXPartitionReaderFactory implements PartitionReaderFactory {
     private final StructType schema;
-    private final String filePath;
+    private final FileSystem fs;
     private static final Logger log = Logger.getLogger(EVTXPartitionReaderFactory.class);
 
-    public EVTXPartitionReaderFactory(StructType schema, String path) {
+    public EVTXPartitionReaderFactory(StructType schema, FileSystem fs) {
         this.schema = schema;
-        this.filePath = path;
+        this.fs = fs;
     }
 
     @Override
     public PartitionReader<InternalRow> createReader(InputPartition partition) {
         log.debug("createReader joined");
-        log.debug("filePath "+filePath);
         try {
-            return new EVTXPartitionReader((EVTXInputPartition) partition, schema);
+            return new EVTXPartitionReader((EVTXInputPartition) partition, schema, fs);
         } catch (FileNotFoundException | URISyntaxException e) {
             log.debug(String.valueOf(e));
             e.printStackTrace();

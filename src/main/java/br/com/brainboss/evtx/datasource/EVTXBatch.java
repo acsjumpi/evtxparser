@@ -32,6 +32,7 @@ public class EVTXBatch implements Batch {
     private final String filename;
     private final int numPartitions;
     private static final Logger log = Logger.getLogger(EVTXBatch.class);
+    private FileSystem fs;
 
     public EVTXBatch(StructType schema,
                     Map<String, String> properties,
@@ -54,8 +55,7 @@ public class EVTXBatch implements Batch {
     @Override
     public PartitionReaderFactory createReaderFactory() {
         log.debug("createReaderFactory joined");
-        log.debug("fileName "+filename);
-        return new EVTXPartitionReaderFactory(schema, filename);
+        return new EVTXPartitionReaderFactory(schema, fs);
     }
 
     private InputPartition[] createPartitions(){
@@ -66,7 +66,7 @@ public class EVTXBatch implements Batch {
             log.debug("CreatePartitions joined");
             log.debug("fileName"+this.filename);
             Path filePath = new Path(filename);
-            FileSystem fs = filePath.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
+            fs = filePath.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
             FSDataInputStream filereader = fs.open(filePath);
             FileHeaderFactory fileheaderfactory = FileHeader::new;
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);

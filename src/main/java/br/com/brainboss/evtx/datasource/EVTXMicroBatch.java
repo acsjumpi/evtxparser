@@ -93,8 +93,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
     @Override
     public PartitionReaderFactory createReaderFactory() {
         log.debug("createReaderFactory joined");
-        log.debug("dirPath "+dir);
-        return new EVTXPartitionReaderFactory(schema, dir);
+        return new EVTXPartitionReaderFactory(schema, fs);
     }
 
     private static boolean isFileWithExtension(FileStatus fileStatus, String desiredExtension) {

@@ -43,15 +43,16 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     private final RootNodeHandlerFactory rootNodeHandlerFactory;
     private final EVTXInputPartition evtxInputPartition;
     private List<Function> valueConverters;
-
-    private StructType schema;
+    private final StructType schema;
+    private final FileSystem fs;
 
     public EVTXPartitionReader(
             EVTXInputPartition evtxInputPartition,
-            StructType schema) throws IOException, URISyntaxException, MalformedChunkException {
+            StructType schema, FileSystem fs) throws IOException, URISyntaxException, MalformedChunkException {
         this.evtxInputPartition = evtxInputPartition;
-        this.filePath = evtxInputPartition.getFilename();
+        this.filePath = evtxInputPartition.getPath();
         this.schema = schema;
+        this.fs = fs;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
         this.rootNodeHandlerFactory = XmlRootNodeHandler::new;
@@ -64,7 +65,6 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             //URL resource = this.getClass().getClassLoader().getResource(this.fileName);
             log.debug("fileName "+this.filePath.toString());
 
-            FileSystem fs = this.filePath.getFileSystem(SparkContext.getOrCreate().hadoopConfiguration());
             FSDataInputStream filereader = fs.open(filePath);
             fileheader = fileheaderfactory.create(filereader, log, true);
             chunkheader = fileheader.next();

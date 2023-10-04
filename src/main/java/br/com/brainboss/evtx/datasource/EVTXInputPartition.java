@@ -6,20 +6,20 @@ import org.apache.spark.sql.connector.read.InputPartition;
 
 public class EVTXInputPartition implements InputPartition {
 
-    private Path filename;
+    private Path filePath;
     private final int partitionNumber;
     private final int groupSize;
     private final boolean last;
 
-    public EVTXInputPartition(Path filename, int partitionNumber, int groupSize, boolean last){
-        this.filename = filename;
+    public EVTXInputPartition(Path filePath, int partitionNumber, int groupSize, boolean last){
+        this.filePath = filePath;
         this.partitionNumber = partitionNumber;
         this.groupSize = groupSize;
         this.last = last;
     }
 
-    public Path getFilename(){
-        return filename;
+    public Path getPath(){
+        return filePath;
     }
 
     public int getPartitionNumber(){
