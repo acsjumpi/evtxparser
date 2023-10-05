@@ -54,7 +54,7 @@ public class EVTXBatch implements Batch {
     @Override
     public PartitionReaderFactory createReaderFactory() {
         log.debug("createReaderFactory joined");
-        return new EVTXPartitionReaderFactory(schema, sConf);
+        return new EVTXPartitionReaderFactory(schema, sConf, false);
     }
 
     private InputPartition[] createPartitions(){

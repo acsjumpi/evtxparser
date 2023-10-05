@@ -39,14 +39,16 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     private List<Function> valueConverters;
     private final StructType schema;
     private final SerializableConfiguration sConf;
+    private final boolean debugMode;
 
     public EVTXPartitionReader(
             EVTXInputPartition evtxInputPartition,
-            StructType schema, SerializableConfiguration sConf) throws IOException, URISyntaxException, MalformedChunkException {
+            StructType schema, SerializableConfiguration sConf, boolean debugMode) throws IOException, URISyntaxException, MalformedChunkException {
         this.evtxInputPartition = evtxInputPartition;
         this.filePath = evtxInputPartition.getPath();
         this.schema = schema;
         this.sConf = sConf;
+        this.debugMode = debugMode;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
         this.rootNodeHandlerFactory = XmlRootNodeHandler::new;
@@ -121,21 +123,23 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
             XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(baos);
             log.debug("Chunk index: "+chunkheader.getChunkNumber());
             Record record = chunkheader.next();
-/* Debug Code - Used for "fake" processing
-            Object[] ir = new Object[schema.fields().length];
-            for (int i=0; i<ir.length; i++) {
-                ir[i] = null;
+
+            if(debugMode){
+                Object[] ir = new Object[schema.fields().length];
+                for (int i=0; i<ir.length; i++) {
+                    ir[i] = null;
+                }
+                row = InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(ir).iterator()).asScala().toSeq());
+            } else {
+                rootNodeHandler.handle(record.getRootNode());
+                rootNodeHandler.close();
+                log.debug(baos.toString());
+
+                xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
+                log.debug(xmlMap);
+
+                row = this.toInternalRow((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
             }
-            row = InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(ir).iterator()).asScala().toSeq());
-*/
-            rootNodeHandler.handle(record.getRootNode());
-            rootNodeHandler.close();
-            log.debug(baos.toString());
-
-            xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
-            log.debug(xmlMap);
-
-            row = this.toInternalRow((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
         } catch (IOException e) {
             //log.debug(String.valueOf(e));
             e.printStackTrace();
