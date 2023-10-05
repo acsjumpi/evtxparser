@@ -4,13 +4,9 @@ import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
 import com.google.common.primitives.UnsignedInteger;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 import org.apache.spark.sql.connector.read.streaming.MicroBatchStream;
@@ -20,25 +16,18 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.apache.spark.util.SerializableConfiguration;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class EVTXMicroBatch implements MicroBatchStream {
     private final StructType schema;
-    private final Map<String, String> properties;
-    private final CaseInsensitiveStringMap options;
     private final String dir;
     private final int numPartitions;
     private static final Logger log = Logger.getLogger(EVTXMicroBatch.class);
     private LongOffset lastOffsetCommitted = LongOffset.apply(-1);
-    private List<FileStatus> unreadFiles = new ArrayList<>();
+    private List<FileStatus> files = new ArrayList<>();
     private FileSystem fs;
     private final SerializableConfiguration sConf;
 
@@ -47,8 +36,6 @@ public class EVTXMicroBatch implements MicroBatchStream {
                           CaseInsensitiveStringMap options) {
 
         this.schema = schema;
-        this.properties = properties;
-        this.options = options;
         this.dir = options.get("path");
         this.numPartitions = options.getInt("numPartitions", 0);
 
@@ -58,41 +45,47 @@ public class EVTXMicroBatch implements MicroBatchStream {
 
     @Override
     public Offset latestOffset(){
+        // lista com todos os arquivos
+        // retorna o tamanho da lista, que foi incrementado com os ultimos arquivos lidos
+        // ordenar lista por modificationTime
         log.debug("latestOffset joined");
-        if(unreadFiles.isEmpty()){
-            List<FileStatus> allFiles = listFiles();
-            unreadFiles = allFiles.stream()
-                    .filter(fileStatus -> isFileWithExtension(fileStatus, ".evtx"))
-//                    .map(FileStatus::getPath)
-                    .collect(Collectors.toList());
+        List<FileStatus> filteredFiles = listFiles();
+        files = filteredFiles.stream()
+//                .filter(fileStatus -> isFileWithExtension(fileStatus, ".evtx"))
+                .sorted(Comparator.comparingLong(FileStatus::getModificationTime))
+                .collect(Collectors.toList());
 
-        }
-
-        return new LongOffset(unreadFiles.size());
+        return new LongOffset(files.size());
     }
 
     @Override
     public InputPartition[] planInputPartitions(Offset startOffset, Offset endOffset) {
+        // endOffset = latestOffset
+        // startOffset = ?
+        // processar todos os arquivos nesse microBatch, do lastOffsetCommited até endOffset
+        // TODO: parametro maxBatchSize para limitar a quantidade de arquivos por batch
+        // criar uma lsita de arquivos ja processados
         log.debug("planInputPartitions joined");
-//        return new InputPartition[]{new EVTXInputPartition()};
-        long start = ((LongOffset)startOffset).offset() + 1;
-        long end = ((LongOffset)endOffset).offset() + 1;
-
-        int sliceStart = (int) (start - lastOffsetCommitted.offset() - 1);
-        int sliceEnd = (int) (end - lastOffsetCommitted.offset() - 1);
-
-        log.debug("start: " + start);
-        log.debug("end: " + end);
-        log.debug("slicestart: " + sliceStart);
-        log.debug("sliceend: " + sliceEnd);
-        log.debug("lastOffsetCommitted: " + lastOffsetCommitted.offset());
-        log.debug("unreadFiles.size: " + unreadFiles.size());
-
-        if(unreadFiles.isEmpty())
+        if(files.isEmpty())
             return new InputPartition[0];
 
-        FileStatus file = unreadFiles.remove((int) start);
-        return createPartitions(file.getPath());
+        log.debug("startOffset: " + ((LongOffset) startOffset).offset());
+        log.debug("endOffset: " + ((LongOffset) endOffset).offset());
+
+        log.debug("lastOffsetCommitted: " + lastOffsetCommitted.offset());
+        log.debug("unreadFiles.size: " + files.size());
+
+
+        int start = (int) lastOffsetCommitted.offset();
+        int end = (int) ((LongOffset) endOffset).offset();
+
+//        FileStatus file = files.get((int) start);
+        List<InputPartition> partitions = new ArrayList<>();
+        for(int i = start; i < end; i++){
+           partitions.addAll(createPartitions(files.get(i).getPath()));
+        }
+
+        return partitions.toArray(new InputPartition[numPartitions]);
     }
 
     @Override
@@ -101,22 +94,18 @@ public class EVTXMicroBatch implements MicroBatchStream {
         return new EVTXPartitionReaderFactory(schema, sConf);
     }
 
-    private static boolean isFileWithExtension(FileStatus fileStatus, String desiredExtension) {
-        String fileName = fileStatus.getPath().getName();
-        return fileName.endsWith(desiredExtension);
-    }
+//    private static boolean isFileWithExtension(FileStatus fileStatus, String desiredExtension) {
+//        String fileName = fileStatus.getPath().getName();
+//        return fileName.endsWith(desiredExtension);
+//    }
 
     private List<FileStatus> listFiles(){
         Path path = new Path(dir);
-//        Configuration conf = new Configuration();
         List<FileStatus> files;
         try{
-//            FileSystem fs = FileSystem.get(conf);
-
             fs = path.getFileSystem(sConf.value());
-            files = Arrays.stream(fs.listStatus(path)).collect(Collectors.toList());
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
+            PathFilter filter = file -> file.getName().endsWith(".evtx");
+            files = Arrays.stream(fs.listStatus(path, filter)).collect(Collectors.toList());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -124,14 +113,13 @@ public class EVTXMicroBatch implements MicroBatchStream {
         return files;
     }
 
-    private InputPartition[] createPartitions(Path filename){
+    private List<InputPartition> createPartitions(Path filename){
         List<InputPartition> partitions = new ArrayList<>();
-        UnsignedInteger chunkCount = UnsignedInteger.ZERO;
+        UnsignedInteger chunkCount;
         int numPartitions = 0;
         try {
             log.debug("CreatePartitions joined");
             log.debug("filename "+filename.toString());
-//            FileInputStream filereader = new FileInputStream(new File(filename));
             FSDataInputStream filereader = fs.open(filename);
             FileHeaderFactory fileheaderfactory = FileHeader::new;
             FileHeader fileheader = fileheaderfactory.create(filereader, log, false);
@@ -139,25 +127,24 @@ public class EVTXMicroBatch implements MicroBatchStream {
 
             numPartitions = this.numPartitions == 0 ? chunkCount.intValue() : this.numPartitions;
             log.debug("Received numPartitions: "+this.numPartitions);
-            log.debug("After numPartitions definition: "+numPartitions);
             int groupSize = (chunkCount.dividedBy(UnsignedInteger.valueOf(numPartitions))).intValue();
 
             for(int i = 0; i < numPartitions; i++)
                 partitions.add(new EVTXInputPartition(filename, i, groupSize, i+1 == numPartitions));
 
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        return partitions.toArray(new InputPartition[numPartitions]);
+        return partitions;
     }
 
     @Override
     public Offset initialOffset() {
+        // Chamado somente no inicio da execuçao para continuar um processo reiniciado
+        // Retornar o offset salvo no checkpoint, caso exista
         log.debug("initialOffset joined");
-        return LongOffset.apply(-1);
+        return LongOffset.apply(0);
     }
 
     @Override
@@ -168,12 +155,9 @@ public class EVTXMicroBatch implements MicroBatchStream {
 
     @Override
     public void commit(Offset end) {
+        // Chamado somento quando entra no proximo microBatch
         log.debug("commit joined");
-        LongOffset newOffset = (LongOffset) end;
-
-        long offsetDiff = (newOffset.offset() - lastOffsetCommitted.offset());
-
-        lastOffsetCommitted = newOffset;
+        lastOffsetCommitted = (LongOffset) end;
     }
 
     @Override
