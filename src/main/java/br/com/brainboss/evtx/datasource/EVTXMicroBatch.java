@@ -24,11 +24,13 @@ public class EVTXMicroBatch implements MicroBatchStream {
     private final StructType schema;
     private final String dir;
     private final int numPartitions;
+    private final int maxBatchSize;
     private static final Logger log = Logger.getLogger(EVTXMicroBatch.class);
     private LongOffset lastOffsetCommitted = LongOffset.apply(-1);
     private List<FileStatus> files = new ArrayList<>();
     private FileSystem fs;
     private final SerializableConfiguration sConf;
+    private final boolean debugMode;
 
     public EVTXMicroBatch(StructType schema,
                           Map<String, String> properties,
@@ -37,6 +39,8 @@ public class EVTXMicroBatch implements MicroBatchStream {
         this.schema = schema;
         this.dir = options.get("path");
         this.numPartitions = options.getInt("numPartitions", 0);
+        this.maxBatchSize = options.getInt("batchSize", 1);
+        this.debugMode = options.getBoolean("debugMode", false);
 
         Configuration conf = SparkContext.getOrCreate().hadoopConfiguration();
         sConf = new SerializableConfiguration(conf);
@@ -53,7 +57,10 @@ public class EVTXMicroBatch implements MicroBatchStream {
                 .sorted(Comparator.comparingLong(FileStatus::getModificationTime))
                 .collect(Collectors.toList());
 
-        return new LongOffset(files.size());
+        long newFiles = files.size() - lastOffsetCommitted.offset() - 1;
+        long end = newFiles <= maxBatchSize ? newFiles : maxBatchSize;
+
+        return new LongOffset(end);
     }
 
     @Override
@@ -88,7 +95,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
     @Override
     public PartitionReaderFactory createReaderFactory() {
         log.debug("createReaderFactory joined");
-        return new EVTXPartitionReaderFactory(schema, sConf);
+        return new EVTXPartitionReaderFactory(schema, sConf, debugMode);
     }
 
     private List<FileStatus> listFiles(){
@@ -149,7 +156,8 @@ public class EVTXMicroBatch implements MicroBatchStream {
     public void commit(Offset end) {
         // Chamado somento quando entra no proximo microBatch
         log.debug("commit joined");
-        lastOffsetCommitted = (LongOffset) end;
+        long lastOffsetCommitted = ((LongOffset) end).offset() - 1;
+        this.lastOffsetCommitted = LongOffset.apply(lastOffsetCommitted);
     }
 
     @Override
