@@ -1,5 +1,6 @@
 package br.com.brainboss.evtx.datasource;
 
+import org.apache.log4j.Logger;
 import org.apache.spark.sql.connector.catalog.SupportsRead;
 import org.apache.spark.sql.connector.catalog.TableCapability;
 import org.apache.spark.sql.connector.read.ScanBuilder;
@@ -9,7 +10,6 @@ import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import org.apache.log4j.Logger;
 
 public class EVTXTable implements SupportsRead {
 

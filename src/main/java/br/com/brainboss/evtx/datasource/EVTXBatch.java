@@ -1,31 +1,26 @@
 package br.com.brainboss.evtx.datasource;
 
-import br.com.brainboss.evtx.parser.ChunkHeader;
 import br.com.brainboss.evtx.parser.FileHeader;
 import br.com.brainboss.evtx.parser.FileHeaderFactory;
-import br.com.brainboss.evtx.parser.MalformedChunkException;
 import com.google.common.primitives.UnsignedInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.log4j.Logger;
 import org.apache.spark.SparkContext;
-import org.apache.spark.sql.Row;
 import org.apache.spark.sql.connector.read.Batch;
 import org.apache.spark.sql.connector.read.InputPartition;
 import org.apache.spark.sql.connector.read.PartitionReaderFactory;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
+import org.apache.spark.util.SerializableConfiguration;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.log4j.Logger;
-import org.apache.spark.util.SerializableConfiguration;
 
 public class EVTXBatch implements Batch {
     private final StructType schema;
@@ -37,8 +32,8 @@ public class EVTXBatch implements Batch {
     private final SerializableConfiguration sConf;
 
     public EVTXBatch(StructType schema,
-                    Map<String, String> properties,
-                    CaseInsensitiveStringMap options) {
+                     Map<String, String> properties,
+                     CaseInsensitiveStringMap options) {
 
         this.schema = schema;
         this.properties = properties;
@@ -53,7 +48,6 @@ public class EVTXBatch implements Batch {
     @Override
     public InputPartition[] planInputPartitions() {
         log.debug("planInputPartitions joined");
-//        return new InputPartition[]{new EVTXInputPartition()};
         return createPartitions();
     }
 

@@ -16,7 +16,6 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import org.apache.spark.util.SerializableConfiguration;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -51,7 +50,6 @@ public class EVTXMicroBatch implements MicroBatchStream {
         log.debug("latestOffset joined");
         List<FileStatus> filteredFiles = listFiles();
         files = filteredFiles.stream()
-//                .filter(fileStatus -> isFileWithExtension(fileStatus, ".evtx"))
                 .sorted(Comparator.comparingLong(FileStatus::getModificationTime))
                 .collect(Collectors.toList());
 
@@ -79,10 +77,9 @@ public class EVTXMicroBatch implements MicroBatchStream {
         int start = ((int) lastOffsetCommitted.offset() + 1);
         int end = (int) ((LongOffset) endOffset).offset();
 
-//        FileStatus file = files.get((int) start);
         List<InputPartition> partitions = new ArrayList<>();
         for(int i = start; i < end; i++){
-           partitions.addAll(createPartitions(files.get(i).getPath()));
+            partitions.addAll(createPartitions(files.get(i).getPath()));
         }
 
         return partitions.toArray(new InputPartition[numPartitions]);
@@ -93,11 +90,6 @@ public class EVTXMicroBatch implements MicroBatchStream {
         log.debug("createReaderFactory joined");
         return new EVTXPartitionReaderFactory(schema, sConf);
     }
-
-//    private static boolean isFileWithExtension(FileStatus fileStatus, String desiredExtension) {
-//        String fileName = fileStatus.getPath().getName();
-//        return fileName.endsWith(desiredExtension);
-//    }
 
     private List<FileStatus> listFiles(){
         Path path = new Path(dir);
