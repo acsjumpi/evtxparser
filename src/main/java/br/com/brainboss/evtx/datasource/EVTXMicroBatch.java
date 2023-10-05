@@ -76,7 +76,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
         log.debug("unreadFiles.size: " + files.size());
 
 
-        int start = (int) lastOffsetCommitted.offset();
+        int start = ((int) lastOffsetCommitted.offset() + 1);
         int end = (int) ((LongOffset) endOffset).offset();
 
 //        FileStatus file = files.get((int) start);
@@ -144,7 +144,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
         // Chamado somente no inicio da execuçao para continuar um processo reiniciado
         // Retornar o offset salvo no checkpoint, caso exista
         log.debug("initialOffset joined");
-        return LongOffset.apply(0);
+        return LongOffset.apply(-1);
     }
 
     @Override

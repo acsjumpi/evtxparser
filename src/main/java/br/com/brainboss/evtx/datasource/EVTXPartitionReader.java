@@ -113,6 +113,10 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                         chunkheader = fileheader.next();
                         return true;
                     }
+                    Long nRecords = (chunkheader.getFileLastRecordNumber().longValue() - chunkheader.getFileFirstRecordNumber().longValue() + 1);
+                    log.debug("Number of Records: "+nRecords);
+                    log.debug("First Record: "+chunkheader.getFileFirstRecordNumber());
+                    log.debug("Last Record: "+chunkheader.getFileLastRecordNumber());
                     return false;
                 }
                 if(chunkheader.getChunkNumber().compareTo(evtxInputPartition.getLastChunk()) >= 0)
@@ -137,24 +141,32 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
         try {
             //while (fileheader.hasNext()) {
-                //chunkheader = fileheader.next();
-                //while (chunkheader.hasNext()) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    //BufferedOutputStream out = new BufferedOutputStream(baos);
-                    XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(baos);
-                    log.debug("Chunk index: "+chunkheader.getChunkNumber());
-                    Record record = chunkheader.next();
-                    rootNodeHandler.handle(record.getRootNode());
-                    rootNodeHandler.close();
-                    log.debug(baos.toString());
+            //chunkheader = fileheader.next();
+            //while (chunkheader.hasNext()) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            //BufferedOutputStream out = new BufferedOutputStream(baos);
+            XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(baos);
+            log.debug("Chunk index: "+chunkheader.getChunkNumber());
+            Record record = chunkheader.next();
+/* Debug Code - Used for "fake" processing
+            Object[] ir = new Object[schema.fields().length];
+            for (int i=0; i<ir.length; i++) {
+                ir[i] = null;
+            }
+            row = InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(ir).iterator()).asScala().toSeq());
+*/
+            rootNodeHandler.handle(record.getRootNode());
+            rootNodeHandler.close();
+            log.debug(baos.toString());
 
-                    //XStream xs = new XStream(new StaxDriver());
-                    //xs.registerConverter(new MapEntryConverter());
-                    //xs.alias("Events", Map.class);
-                    xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
-                    log.debug(xmlMap);
+            //XStream xs = new XStream(new StaxDriver());
+            //xs.registerConverter(new MapEntryConverter());
+            //xs.alias("Events", Map.class);
+            xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
+            log.debug(xmlMap);
 
-                    row = this.toInternalRow((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
+            row = this.toInternalRow((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
+
 //                    this.iterateOverStruct(data, this.schema, this.valueConverters);
 
 //                    xmlObject = this.toObjectArray((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
@@ -163,9 +175,9 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 //                    ExpressionEncoder<Events> eventsExpressionEncoder = (ExpressionEncoder<Events>) eventsEncoder;
 //                    ExpressionEncoder.Serializer<Events> eventsSerializer = eventsExpressionEncoder.createSerializer();
 //                    row = eventsSerializer.apply(xmlValue);
-               //}
-            //}
-        } catch (MalformedChunkException | IOException e) {
+    //}
+    //}
+        } catch (IOException e) {
             //log.debug(String.valueOf(e));
             e.printStackTrace();
             throw new RuntimeException(e);
@@ -174,6 +186,7 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         }
 //        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
         return row;
+
     }
 
     public static Object convertNodesFromXml(String xml) throws Exception {

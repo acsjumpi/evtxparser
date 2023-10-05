@@ -37,6 +37,8 @@ import org.apache.log4j.Logger;
 public class ChunkHeader extends Block {
     public static final String ELF_CHNK = "ElfChnk";
     private final String magicString;
+
+
     private final UnsignedLong fileFirstRecordNumber;
     private final UnsignedLong fileLastRecordNumber;
     private final UnsignedLong logFirstRecordNumber;
@@ -183,6 +185,14 @@ public class ChunkHeader extends Block {
 
     public UnsignedInteger getChunkNumber() {
         return chunkNumber;
+    }
+
+    public UnsignedLong getFileFirstRecordNumber() {
+        return fileFirstRecordNumber;
+    }
+
+    public UnsignedLong getFileLastRecordNumber() {
+        return fileLastRecordNumber;
     }
 
     public Record next() throws IOException {
