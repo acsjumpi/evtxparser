@@ -27,6 +27,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
     private final int maxBatchSize;
     private static final Logger log = Logger.getLogger(EVTXMicroBatch.class);
     private LongOffset lastOffsetCommitted = LongOffset.apply(-1);
+    private LongOffset currentOffset = LongOffset.apply(-1);
     private List<FileStatus> files = new ArrayList<>();
     private FileSystem fs;
     private final SerializableConfiguration sConf;
@@ -57,10 +58,22 @@ public class EVTXMicroBatch implements MicroBatchStream {
                 .sorted(Comparator.comparingLong(FileStatus::getModificationTime))
                 .collect(Collectors.toList());
 
-        long newFiles = files.size() - lastOffsetCommitted.offset() - 1;
-        long end = newFiles <= maxBatchSize ? newFiles : maxBatchSize;
+        long filesReaded = currentOffset.offset() + 1;
+        long newFiles = files.size() - filesReaded;
+        long batchSize = newFiles <= maxBatchSize ? newFiles : maxBatchSize;
+        long endOffset = currentOffset.offset() + batchSize;
 
-        return new LongOffset(end);
+        log.debug("maxBatchSize: " + maxBatchSize);
+        log.debug("batchSize: " + batchSize);
+        log.debug("currentOffset: " + currentOffset);
+        log.debug("LastOffset: " + (files.size() - 1));
+        log.debug("new endOffset: " + endOffset);
+
+        log.debug("lastOffsetCommitted: " + lastOffsetCommitted.offset());
+        log.debug("unread/all: " + newFiles + "/" + files.size());
+
+
+        return new LongOffset(endOffset);
     }
 
     @Override
@@ -81,11 +94,12 @@ public class EVTXMicroBatch implements MicroBatchStream {
         log.debug("unreadFiles.size: " + files.size());
 
 
-        int start = ((int) lastOffsetCommitted.offset() + 1);
+        int start = ((int) ((LongOffset) startOffset).offset() + 1);
         int end = (int) ((LongOffset) endOffset).offset();
 
         List<InputPartition> partitions = new ArrayList<>();
-        for(int i = start; i < end; i++){
+        for(int i = start; i <= end; i++){
+            currentOffset = LongOffset.apply(i);
             partitions.addAll(createPartitions(files.get(i).getPath()));
         }
 
@@ -143,6 +157,7 @@ public class EVTXMicroBatch implements MicroBatchStream {
         // Chamado somente no inicio da execuçao para continuar um processo reiniciado
         // Retornar o offset salvo no checkpoint, caso exista
         log.debug("initialOffset joined");
+
         return LongOffset.apply(-1);
     }
 
