@@ -78,7 +78,7 @@ public class FileHeader extends Block {
         if (crc32.getValue() != checksum.longValue()) {
             throw new IOException("Invalid checksum");
         }
-        NumberUtil.intValueExpected(minorVersion, 1, "Invalid minor version.");
+        //NumberUtil.intValueExpected(minorVersion, 1, "Invalid minor version.");
         NumberUtil.intValueExpected(majorVersion, 3, "Invalid major version.");
         NumberUtil.intValueExpected(headerChunkSize, 4096, "Invalid header chunk size.");
         this.inputStream = inputStream;
