@@ -165,7 +165,7 @@ public class FileHeader extends Block {
             try {
                 UnsignedInteger oldCount = count;
                 count = count.plus(UnsignedInteger.valueOf(1));
-                return new ChunkHeader(binaryReader, log, currentOffset, oldCount);
+                return new ChunkHeader(binaryReader, log, currentOffset, oldCount, majorVersion, minorVersion);
             } catch (IOException e) {
                 throw new MalformedChunkException("Malformed chunk, unable to parse", e, currentOffset, count.minus(UnsignedInteger.valueOf(1)), binaryReader.getBytes());
             }
@@ -182,7 +182,7 @@ public class FileHeader extends Block {
             try {
                 UnsignedInteger oldCount = count;
                 count = count.plus(UnsignedInteger.valueOf(chunkNumber));
-                return new ChunkHeader(binaryReader, log, currentOffset, oldCount);
+                return new ChunkHeader(binaryReader, log, currentOffset, oldCount, majorVersion, minorVersion);
             } catch (IOException e) {
                 throw new MalformedChunkException("Malformed chunk, unable to parse", e, currentOffset, count.minus(UnsignedInteger.valueOf(chunkNumber)), binaryReader.getBytes());
             }

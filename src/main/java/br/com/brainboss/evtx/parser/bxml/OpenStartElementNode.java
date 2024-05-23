@@ -41,7 +41,21 @@ public class OpenStartElementNode extends BxmlNodeWithToken {
         if ((getFlags() & 0x0b) != 0) {
             throw new IOException("Invalid flag detected");
         }
-        unknown = binaryReader.readWord();
+        //EVTX 3.2 Treatment Case
+        int majorVersion = chunkHeader.getMajorVersion();
+        int minorVersion = chunkHeader.getMinorVersion();
+        if (majorVersion == 3) {
+            if (minorVersion == 1) {
+                unknown = binaryReader.readWord();
+            } else {
+                unknown = binaryReader.peek();
+                NumberUtil.intValueExpected(minorVersion, 2, "Invalid minor version.");
+            }
+        } else {
+            unknown = binaryReader.peek();
+            NumberUtil.intValueExpected(majorVersion, 3, "Invalid minor version.");
+        }
+
         size = binaryReader.readDWord();
         stringOffset = NumberUtil.intValueMax(binaryReader.readDWord(), Integer.MAX_VALUE, "Invalid string offset.");
         int tagLength = 11;

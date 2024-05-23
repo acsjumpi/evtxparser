@@ -55,10 +55,14 @@ public class ChunkHeader extends Block {
 
     private final Logger log;
     private UnsignedLong recordNumber;
+    private final int majorVersion;
+    private final int minorVersion;
 
-    public ChunkHeader(BinaryReader binaryReader, Logger log, long headerOffset, UnsignedInteger chunkNumber) throws IOException {
+    public ChunkHeader(BinaryReader binaryReader, Logger log, long headerOffset, UnsignedInteger chunkNumber, int majorVersion, int minorVersion) throws IOException {
         super(binaryReader, headerOffset);
         this.chunkNumber = chunkNumber;
+        this.majorVersion = majorVersion;
+        this.minorVersion = minorVersion;
         CRC32 crc32 = new CRC32();
         crc32.update(binaryReader.peekBytes(120));
         this.log = log;
@@ -193,6 +197,14 @@ public class ChunkHeader extends Block {
 
     public UnsignedLong getFileLastRecordNumber() {
         return fileLastRecordNumber;
+    }
+
+    public int getMajorVersion() {
+        return majorVersion;
+    }
+
+    public int getMinorVersion() {
+        return minorVersion;
     }
 
     public Record next() throws IOException {

@@ -31,8 +31,9 @@ import java.util.List;
 public class CloseStartElementNode extends BxmlNodeWithToken {
     public CloseStartElementNode(BinaryReader binaryReader, ChunkHeader chunkHeader, BxmlNode parent) throws IOException {
         super(binaryReader, chunkHeader, parent);
+        int token = getToken();
         if ((getFlags() & 0x0F) != 0) {
-            throw new IOException("Invalid flag");
+            throw new IOException("Invalid flag:" +token);
         }
         init();
     }
