@@ -5,7 +5,7 @@ A Spark custom datasource reader to parse EVTX files.
 ## Overview
 This project provides a custom datasource reader for Apache Spark to parse EVTX files. EVTX files are used by Windows to store event logs, and this project allows you to read and process these files using Spark.
 
-## building the JAR File
+## Building the JAR File
 
 ### Step 1: Clone the Project
 Clone this project and import it into IntelliJ.
