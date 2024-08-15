@@ -2,35 +2,34 @@ package br.com.brainboss.evtx.datasource;
 
 import br.com.brainboss.evtx.handlers.RootNodeHandlerFactory;
 import br.com.brainboss.evtx.handlers.XmlRootNodeHandler;
-import br.com.brainboss.evtx.parser.ChunkHeader;
-import br.com.brainboss.evtx.parser.FileHeader;
-import br.com.brainboss.evtx.parser.FileHeaderFactory;
-import br.com.brainboss.evtx.parser.MalformedChunkException;
 import br.com.brainboss.evtx.parser.Record;
+import br.com.brainboss.evtx.parser.*;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.log4j.Logger;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.connector.read.PartitionReader;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import org.apache.spark.util.SerializableConfiguration;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import scala.collection.JavaConverters;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.*;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.function.Function;
 
-import org.apache.log4j.Logger;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
 public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
-    private final String fileName;
+    private final Path filePath;
     private final FileHeaderFactory fileheaderfactory;
     private static final Logger log = Logger.getLogger(EVTXPartitionReader.class);
     private FileHeader fileheader;
@@ -38,16 +37,18 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     private final RootNodeHandlerFactory rootNodeHandlerFactory;
     private final EVTXInputPartition evtxInputPartition;
     private List<Function> valueConverters;
-
-    private StructType schema;
+    private final StructType schema;
+    private final SerializableConfiguration sConf;
+    private final boolean debugMode;
 
     public EVTXPartitionReader(
             EVTXInputPartition evtxInputPartition,
-            StructType schema,
-            String fileName) throws IOException, URISyntaxException, MalformedChunkException {
+            StructType schema, SerializableConfiguration sConf, boolean debugMode) throws IOException, URISyntaxException, MalformedChunkException {
         this.evtxInputPartition = evtxInputPartition;
-        this.fileName = fileName;
+        this.filePath = evtxInputPartition.getPath();
         this.schema = schema;
+        this.sConf = sConf;
+        this.debugMode = debugMode;
         this.valueConverters = ValueConverters.getConverters(schema);
         this.fileheaderfactory = FileHeader::new;
         this.rootNodeHandlerFactory = XmlRootNodeHandler::new;
@@ -57,10 +58,10 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
     private void createEvtxReader() {
         try {
             log.debug("CreateEvtxReader joined");
-            FileInputStream filereader;
-            //URL resource = this.getClass().getClassLoader().getResource(this.fileName);
-            log.debug("fileName "+this.fileName);
-            filereader = new FileInputStream(new File(this.fileName));
+            log.debug("fileName "+filePath.toString());
+
+            FileSystem fs = filePath.getFileSystem(sConf.value());
+            FSDataInputStream filereader = fs.open(filePath);
             fileheader = fileheaderfactory.create(filereader, log, true);
             chunkheader = fileheader.next();
 
@@ -82,21 +83,6 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
 
     @Override
     public boolean next() {
-//        if (chunkheader.hasNext())
-//            return true;
-//        if (fileheader.hasNext()) {
-//            try {
-//                chunkheader = fileheader.next();
-//            } catch (MalformedChunkException e) {
-//                throw new RuntimeException(e);
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            }
-//        } else {
-//            return false;
-//        }
-//        return chunkheader.hasNext();
-
         if(chunkheader.hasNext())
             return true;
         else {
@@ -106,6 +92,10 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
                         chunkheader = fileheader.next();
                         return true;
                     }
+                    Long nRecords = (chunkheader.getFileLastRecordNumber().longValue() - chunkheader.getFileFirstRecordNumber().longValue() + 1);
+                    log.debug("Number of Records: "+nRecords);
+                    log.debug("First Record: "+chunkheader.getFileFirstRecordNumber());
+                    log.debug("Last Record: "+chunkheader.getFileLastRecordNumber());
                     return false;
                 }
                 if(chunkheader.getChunkNumber().compareTo(evtxInputPartition.getLastChunk()) >= 0)
@@ -129,43 +119,34 @@ public class EVTXPartitionReader implements PartitionReader<InternalRow> {
         InternalRow row;
 
         try {
-            //while (fileheader.hasNext()) {
-                //chunkheader = fileheader.next();
-                //while (chunkheader.hasNext()) {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    //BufferedOutputStream out = new BufferedOutputStream(baos);
-                    XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(baos);
-                    log.debug("Chunk index: "+chunkheader.getChunkNumber());
-                    Record record = chunkheader.next();
-                    rootNodeHandler.handle(record.getRootNode());
-                    rootNodeHandler.close();
-                    log.debug(baos.toString());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            XmlRootNodeHandler rootNodeHandler = (XmlRootNodeHandler) rootNodeHandlerFactory.create(baos);
+            log.debug("Chunk index: "+chunkheader.getChunkNumber());
+            Record record = chunkheader.next();
 
-                    //XStream xs = new XStream(new StaxDriver());
-                    //xs.registerConverter(new MapEntryConverter());
-                    //xs.alias("Events", Map.class);
-                    xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
-                    log.debug(xmlMap);
+            if(debugMode){
+                Object[] ir = new Object[schema.fields().length];
+                for (int i=0; i<ir.length; i++) {
+                    ir[i] = null;
+                }
+                row = InternalRow.fromSeq(JavaConverters.asScalaIteratorConverter(Arrays.asList(ir).iterator()).asScala().toSeq());
+            } else {
+                rootNodeHandler.handle(record.getRootNode());
+                rootNodeHandler.close();
+                log.debug(baos.toString());
 
-                    row = this.toInternalRow((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
-//                    this.iterateOverStruct(data, this.schema, this.valueConverters);
+                xmlMap = (HashMap<String, Object>) convertNodesFromXml(baos.toString());
+                log.debug(xmlMap);
 
-//                    xmlObject = this.toObjectArray((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
-
-//                    Encoder<Events> eventsEncoder = Encoders.bean(Events.class);
-//                    ExpressionEncoder<Events> eventsExpressionEncoder = (ExpressionEncoder<Events>) eventsEncoder;
-//                    ExpressionEncoder.Serializer<Events> eventsSerializer = eventsExpressionEncoder.createSerializer();
-//                    row = eventsSerializer.apply(xmlValue);
-               //}
-            //}
-        } catch (MalformedChunkException | IOException e) {
+                row = this.toInternalRow((HashMap<String, Object>) xmlMap.get("Event"), this.schema, this.valueConverters);
+            }
+        } catch (IOException e) {
             //log.debug(String.valueOf(e));
             e.printStackTrace();
             throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-//        return InternalRow.apply(JavaConverters.asScalaIteratorConverter(Arrays.asList(xmlObject).iterator()).asScala().toSeq());
         return row;
     }
 

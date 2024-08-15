@@ -1,5 +1,6 @@
 package br.com.brainboss.evtx.datasource;
 
+import org.apache.log4j.Logger;
 import org.apache.spark.sql.connector.catalog.Table;
 import org.apache.spark.sql.connector.catalog.TableProvider;
 import org.apache.spark.sql.connector.expressions.Transform;
@@ -7,7 +8,6 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
 import java.util.Map;
-import org.apache.log4j.Logger;
 
 public class EVTX implements TableProvider {
     private static final Logger log = Logger.getLogger(EVTX.class);
